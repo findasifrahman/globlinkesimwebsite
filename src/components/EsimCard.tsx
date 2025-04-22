@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, Typography, Button, Box, Chip, Divider } from '@mui/material';
 import { Order } from '@/types/order';
@@ -26,12 +24,12 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
   
   // Use useCallback to prevent unnecessary re-renders
   const fetchPackageDetails = useCallback(async () => {
-    if (!order.packageCode) {
-      console.log('No packageCode available for order:', order.orderNo);
+    if (!order.package_code) {
+      console.log('No package_code available for order:', order.orderNo);
       return;
     }
     
-    console.log('Fetching package details for order:', order.orderNo, 'with packageCode:', order.packageCode);
+    console.log('Fetching package details for order:', order.orderNo, 'with package_code:', order.package_code);
     
     try {
       // First try to get from localStorage
@@ -41,11 +39,11 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
           const parsedPackages = JSON.parse(storedPackages);
           console.log('Parsed packages from localStorage:', parsedPackages);
           
-          // Find the package that matches the order's packageCode
+          // Find the package that matches the order's package_code
           const foundPackage = parsedPackages.find((pkg: any) => {
-            const matches = pkg.packageCode === order.packageCode || 
-                           pkg.packageCode === order.packageCode;
-            //console.log(`Comparing ${pkg.package_code || pkg.packageCode} with ${order.packageCode}: ${matches}`);
+            const matches = pkg.package_code === order.package_code || 
+                           pkg.packageCode === order.package_code;
+            //console.log(`Comparing ${pkg.package_code || pkg.packageCode} with ${order.package_code}: ${matches}`);
             return matches;
           });
           
@@ -64,7 +62,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
             setPackageDetails(packageDetails);
             return;
           } else {
-            console.log('Package not found in localStorage for code:', order.packageCode);
+            console.log('Package not found in localStorage for code:', order.package_code);
           }
         } catch (e) {
           console.error('Error parsing stored packages:', e);
@@ -74,8 +72,8 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
       }
       
       // If not in localStorage or parsing failed, fetch from API
-      console.log('Fetching package details from API for:', order.packageCode);
-      const response = await fetch(`/api/packages/${order.packageCode}`);
+      console.log('Fetching package details from API for:', order.package_code);
+      const response = await fetch(`/api/packages/${order.package_code}`);
       if (response.ok) {
         const data = await response.json();
         console.log('API response:', data);
@@ -86,11 +84,11 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
     } catch (error) {
       console.error('Error fetching package details:', error);
     }
-  }, [order.packageCode, order.orderNo]);
+  }, [order.package_code, order.orderNo]);
 
   useEffect(() => {
     fetchPackageDetails();
-  }, [fetchPackageDetails, order]);
+  }, [fetchPackageDetails]);
 
   const formatDataSize = (bytes?: number) => {
     if (!bytes) return 'N/A';
@@ -110,7 +108,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
   // Only log once when component mounts or order changes
   useEffect(() => {
     console.log('Order data:', order);
-  }, [order]); // Only log when order changes
+  }, [order.orderNo]); // Only log when order number changes
 
   return (
     <Card sx={{ 

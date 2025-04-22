@@ -1,7 +1,8 @@
 export interface Order {
   orderNo: string;
   status: string;
-  packageCode: string;
+  package_code: string;
+  packageCode?: string;
   qrCode?: string;
   iccid?: string;
   smdpStatus?: string;

@@ -16,9 +16,9 @@ import Footer from '@/components/Footer';
 // Styled components
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
+  borderRadius: theme.spacing(2),
+  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.1)',
   marginBottom: theme.spacing(4),
-  borderRadius: '12px',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
 }));
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
@@ -61,10 +61,10 @@ export default function AgreementPage() {
       <Container maxWidth="lg" sx={{ py: 8 }}>
         <StyledPaper>
           <SectionText>
-            These Terms of Service (&quot;Terms&quot;) govern your access to and use of the Globlink website, mobile applications, and services (&quot;Services&quot;). By accessing or using our Services, you agree to be bound by these Terms. If you do not agree to these Terms, you may not access or use our Services.
+            These Terms of Service apply to all prepaid services and related offerings provided by Intricate Lab . (hereinafter "Globlink"), located at Dhaka Bangladesh. Unless otherwise agreed to in writing, Intricate Lab does not accept any terms that differ from these.
           </SectionText>
           
-          <SectionTitle variant="h5">1. General Validity</SectionTitle>
+          <SectionTitle variant="h5">1. General Validity of the Terms</SectionTitle>
           <SectionText>
             1.1 These Terms of Service (hereinafter "Terms") constitute a legally binding agreement between you (the "User" or "Customer") and Globlink.
           </SectionText>

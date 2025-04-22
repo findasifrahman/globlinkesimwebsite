@@ -23,7 +23,6 @@ import {
   AddCircleOutline,
 } from '@mui/icons-material';
 import Image from 'next/image';
-import { useSession } from 'next-auth/react';
 
 interface Order {
   id: number;
@@ -53,13 +52,10 @@ export default function DashboardPage() {
   const [esimDetails, setEsimDetails] = useState<Record<string, ESIMDetails>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const session = useSession();
 
   useEffect(() => {
-    if (session?.user) {
-      fetchOrders();
-    }
-  }, [session?.user, fetchOrders]);
+    fetchOrders();
+  }, []);
 
   const fetchOrders = async () => {
     try {

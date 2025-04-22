@@ -17,7 +17,7 @@ export default function OrderConfirmationPage() {
     if (orderNo) {
       checkOrderStatus();
     }
-  }, [orderNo, checkOrderStatus]);
+  }, [orderNo]);
 
   const checkOrderStatus = async () => {
     setLoading(true);

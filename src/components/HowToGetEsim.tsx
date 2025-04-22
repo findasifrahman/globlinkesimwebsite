@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { Box, Typography, Paper, Divider } from '@mui/material';
@@ -102,7 +102,7 @@ const HowToGetEsim = () => {
               </Typography>
             </Box>
             <Typography variant="body1" sx={{ color: 'text.primary' }}>
-              After your purchase, you&apos;ll receive an email with your eSIM activation details, including:
+              After your purchase, you'll receive an email with your eSIM activation details, including:
             </Typography>
             <Box sx={{ mt: 2 }}>
               <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', mb: 1, color: 'text.primary' }}>
@@ -143,7 +143,7 @@ const HowToGetEsim = () => {
                 Method 1: Scan QR Code
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.primary' }}>
-                Simply scan the QR code with your device&apos;s camera to install the eSIM automatically.
+                Simply scan the QR code with your device's camera to install the eSIM automatically.
               </Typography>
             </Box>
             
@@ -152,7 +152,7 @@ const HowToGetEsim = () => {
                 Method 2: Manual Entry
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.primary' }}>
-                If scanning doesn&apos;t work, you can manually enter the activation details following these steps:
+                If scanning doesn't work, you can manually enter the activation details following these steps:
               </Typography>
               
               <Box sx={{ mt: 2 }}>
@@ -161,9 +161,9 @@ const HowToGetEsim = () => {
                   <strong>iPhone:</strong>
                 </Typography>
                 <Typography variant="body2" sx={{ pl: 3, mb: 2, color: 'text.primary' }}>
-                  • Go to Settings &gt; Cellular &gt; Add eSIM &gt; Enter Details Manually
+                  • Go to Settings {'>'} Cellular {'>'} Add eSIM {'>'} Enter Details Manually
                   <br />
-                  • Enter the &quot;SM-DP+ Address&quot; and &quot;Activation Code&quot;, then tap &quot;Next&quot;
+                  • Enter the "SM-DP+ Address" and "Activation Code", then tap "Next"
                 </Typography>
                 
                 <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', mb: 1, color: 'text.primary' }}>
@@ -171,9 +171,9 @@ const HowToGetEsim = () => {
                   <strong>Samsung:</strong>
                 </Typography>
                 <Typography variant="body2" sx={{ pl: 3, mb: 2, color: 'text.primary' }}>
-                  • Go to Settings &gt; Network & Internet &gt; SIM card manager &gt; Add mobile plan &gt; Scan carrier QR code or Enter activation code
+                  • Go to Settings {'>'} Network & Internet {'>'} SIM card manager {'>'} Add mobile plan {'>'} Scan carrier QR code or Enter activation code
                   <br />
-                  • Enter the long &quot;Activation Code&quot;
+                  • Enter the long "Activation Code"
                 </Typography>
                 
                 <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', mb: 1, color: 'text.primary' }}>
@@ -181,9 +181,9 @@ const HowToGetEsim = () => {
                   <strong>Pixel:</strong>
                 </Typography>
                 <Typography variant="body2" sx={{ pl: 3, color: 'text.primary' }}>
-                  • Go to Settings &gt; Network & Internet &gt; Mobile Network or &quot;+&quot; &gt; Add more &gt; Download a SIM instead? &gt; Need help &gt; Enter it manually
+                  • Go to Settings {'>'} Network & Internet {'>'} Mobile Network or "+" {'>'} Add more {'>'} Download a SIM instead? {'>'} Need help {'>'} Enter it manually
                   <br />
-                  • Enter the long &quot;Activation Code&quot;
+                  • Enter the long "Activation Code"
                 </Typography>
               </Box>
             </Box>

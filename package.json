@@ -4,11 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next lint && next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest",
-    "vercel-build": "next build",
     "db:migrate": "ts-node src/db/migrate.ts",
     "db:setup": "node setup-local-db.js"
   },
@@ -33,7 +31,6 @@
     "express": "^5.1.0",
     "i18n-iso-countries": "^7.14.0",
     "jsonwebtoken": "^9.0.2",
-    "lucide-react": "^0.503.0",
     "next": "^15.3.0",
     "next-auth": "^4.24.11",
     "node-fetch": "^2.7.0",

@@ -32,7 +32,7 @@ export default function PackageList() {
   // Filter packages whenever search or regionType changes
   useEffect(() => {
     filterPackages();
-  }, [filterPackages, allPackages, regionType, search]);
+  }, [search, regionType, allPackages]);
 
   const fetchAllPackages = async () => {
     try {

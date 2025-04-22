@@ -1,5 +1,3 @@
-"use client";
-
 import { Card, CardContent, Typography, Box, Chip, Button } from '@mui/material';
 import { AllPackage } from '@prisma/client';
 import { useRouter } from 'next/navigation';

@@ -189,20 +189,13 @@ export default function SignIn() {
           </Button>
           
           <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
-              Don&apos;t have an account?{' '}
-              <Link href="/auth/signup" color="primary">
-                Sign up
+            <Typography variant="body2">
+              Don't have an account?{' '}
+              <Link href="/auth/register" style={{ color: 'inherit', fontWeight: 'bold' }}>
+                Register
               </Link>
             </Typography>
           </Box>
-          
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
-            Forgot your password?{' '}
-            <Link href="/auth/forgot-password" color="primary">
-              Reset it here
-            </Link>
-          </Typography>
         </Paper>
       </Container>
       <Footer />
