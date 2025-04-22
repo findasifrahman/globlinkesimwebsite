@@ -1,0 +1,24 @@
+import { FlatCompat } from '@eslint/eslintrc'
+const compat = new FlatCompat({
+  baseDirectory: import.meta.dirname,
+})
+
+const eslintConfig = [
+  ...compat.config({
+    extends: ['next'],
+    rules: {
+      // Disable specific rules
+      'react/no-unescaped-entities': 'off',
+      '@next/next/no-page-custom-font': 'off',
+      'no-console': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'react-hooks/exhaustive-deps': 'off',
+      '@next/next/no-img-element': 'off',
+      'no-constant-condition': 'off',
+      '@typescript-eslint/no-require-imports': 'off'
+    },
+  }),
+]
+
+export default eslintConfig 
