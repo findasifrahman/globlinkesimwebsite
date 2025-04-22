@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useNotification } from '@/contexts/NotificationContext';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { showNotification } = useNotification();
@@ -77,5 +77,13 @@ export default function VerifyEmailPage() {
         </Alert>
       )}
     </Box>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 } 
