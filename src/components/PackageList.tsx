@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -10,6 +12,7 @@ import {
   Typography,
   Autocomplete,
   Paper,
+  Grid,
 } from '@mui/material';
 import { Search, Public, Flag, Favorite } from '@mui/icons-material';
 import { ProcessedPackage } from '@/types/package';

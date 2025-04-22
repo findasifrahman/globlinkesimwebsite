@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, Typography, Button, Box, Chip, Divider } from '@mui/material';
 import { Order } from '@/types/order';
