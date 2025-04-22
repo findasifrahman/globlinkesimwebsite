@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="600" viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a237e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d47a1;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="pulse">
+      <feGaussianBlur stdDeviation="2" result="blur">
+        <animate attributeName="stdDeviation" values="1;3;1" dur="3s" repeatCount="indefinite"/>
+      </feGaussianBlur>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+  
+  <!-- World map with connection points -->
+  <g transform="translate(600,300) scale(1.5)">
+    <!-- Simplified world map -->
+    <path d="M-200,-100 C-150,-50 -100,-150 -50,-100 C0,-50 50,-150 100,-100 C150,-50 200,-150 250,-100" 
+          stroke="#4fc3f7" stroke-width="3" fill="none" opacity="0.8"/>
+    
+    <!-- Additional map paths -->
+    <path d="M-200,0 C-150,50 -100,-50 -50,0 C0,50 50,-50 100,0 C150,50 200,-50 250,0" 
+          stroke="#4fc3f7" stroke-width="3" fill="none" opacity="0.8"/>
+    
+    <path d="M-200,100 C-150,150 -100,50 -50,100 C0,150 50,50 100,100 C150,150 200,50 250,100" 
+          stroke="#4fc3f7" stroke-width="3" fill="none" opacity="0.8"/>
+    
+    <!-- Connection points -->
+    <g filter="url(#pulse)">
+      <circle cx="-200" cy="-100" r="8" fill="#ff4081"/>
+      <circle cx="-50" cy="-100" r="8" fill="#ff4081"/>
+      <circle cx="100" cy="-100" r="8" fill="#ff4081"/>
+      <circle cx="250" cy="-100" r="8" fill="#ff4081"/>
+      
+      <circle cx="-200" cy="0" r="8" fill="#ff4081"/>
+      <circle cx="-50" cy="0" r="8" fill="#ff4081"/>
+      <circle cx="100" cy="0" r="8" fill="#ff4081"/>
+      <circle cx="250" cy="0" r="8" fill="#ff4081"/>
+      
+      <circle cx="-200" cy="100" r="8" fill="#ff4081"/>
+      <circle cx="-50" cy="100" r="8" fill="#ff4081"/>
+      <circle cx="100" cy="100" r="8" fill="#ff4081"/>
+      <circle cx="250" cy="100" r="8" fill="#ff4081"/>
+    </g>
+    
+    <!-- Connection lines -->
+    <g opacity="0.8">
+      <line x1="-200" y1="-100" x2="-50" y2="-100" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="-50" y1="-100" x2="100" y2="-100" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="100" y1="-100" x2="250" y2="-100" stroke="#4fc3f7" stroke-width="2"/>
+      
+      <line x1="-200" y1="0" x2="-50" y2="0" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="-50" y1="0" x2="100" y2="0" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="100" y1="0" x2="250" y2="0" stroke="#4fc3f7" stroke-width="2"/>
+      
+      <line x1="-200" y1="100" x2="-50" y2="100" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="-50" y1="100" x2="100" y2="100" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="100" y1="100" x2="250" y2="100" stroke="#4fc3f7" stroke-width="2"/>
+      
+      <!-- Cross connections -->
+      <line x1="-200" y1="-100" x2="-200" y2="0" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="-200" y1="0" x2="-200" y2="100" stroke="#4fc3f7" stroke-width="2"/>
+      
+      <line x1="-50" y1="-100" x2="-50" y2="0" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="-50" y1="0" x2="-50" y2="100" stroke="#4fc3f7" stroke-width="2"/>
+      
+      <line x1="100" y1="-100" x2="100" y2="0" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="100" y1="0" x2="100" y2="100" stroke="#4fc3f7" stroke-width="2"/>
+      
+      <line x1="250" y1="-100" x2="250" y2="0" stroke="#4fc3f7" stroke-width="2"/>
+      <line x1="250" y1="0" x2="250" y2="100" stroke="#4fc3f7" stroke-width="2"/>
+    </g>
+  </g>
+  
+  <!-- Text -->
+  <g transform="translate(600,500)">
+    <text x="0" y="-50" font-family="Arial" font-size="60" font-weight="bold" fill="white" text-anchor="middle" filter="url(#glow)">
+      Global Connectivity
+    </text>
+    <text x="0" y="0" font-family="Arial" font-size="30" fill="white" text-anchor="middle" opacity="0.9">
+      Stay connected worldwide with our eSIM packages
+    </text>
+  </g>
+</svg> 
