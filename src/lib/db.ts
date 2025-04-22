@@ -1,18 +1,18 @@
 import { PrismaClient } from '@prisma/client'
 
-// Use an explicit connection string instead of relying on environment variables
-const DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/esim_db?schema=public";
+// Prevent multiple instances of Prisma Client in development
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
-console.log('Connecting to database:', DATABASE_URL.replace(/:([^:@]+)@/, ':****@'));
-
-// Create a new Prisma client with logging
-const prisma = new PrismaClient({
+const prisma = globalForPrisma.prisma || new PrismaClient({
   datasources: {
     db: {
-      url: DATABASE_URL
+      url: process.env.DATABASE_URL
     }
-  },
-  log: ['query', 'error', 'warn'],
+  }
 })
 
-export { prisma } 
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma
+}
+
+export default prisma 
