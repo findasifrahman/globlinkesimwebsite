@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { EsimModal } from '@/components/EsimModal';
