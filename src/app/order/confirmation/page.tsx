@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { EsimModal } from '@/components/EsimModal';
@@ -19,7 +17,7 @@ export default function OrderConfirmationPage() {
     if (orderNo) {
       checkOrderStatus();
     }
-  }, [orderNo]);
+  }, [orderNo, checkOrderStatus]);
 
   const checkOrderStatus = async () => {
     setLoading(true);

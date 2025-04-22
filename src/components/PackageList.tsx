@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -12,7 +10,6 @@ import {
   Typography,
   Autocomplete,
   Paper,
-  Grid,
 } from '@mui/material';
 import { Search, Public, Flag, Favorite } from '@mui/icons-material';
 import { ProcessedPackage } from '@/types/package';
@@ -35,7 +32,7 @@ export default function PackageList() {
   // Filter packages whenever search or regionType changes
   useEffect(() => {
     filterPackages();
-  }, [search, regionType, allPackages]);
+  }, [filterPackages, allPackages, regionType, search]);
 
   const fetchAllPackages = async () => {
     try {

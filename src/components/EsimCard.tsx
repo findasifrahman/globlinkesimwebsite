@@ -27,11 +27,11 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
   // Use useCallback to prevent unnecessary re-renders
   const fetchPackageDetails = useCallback(async () => {
     if (!order.packageCode) {
-      console.log('No package_code available for order:', order.orderNo);
+      console.log('No packageCode available for order:', order.orderNo);
       return;
     }
     
-    console.log('Fetching package details for order:', order.orderNo, 'with package_code:', order.package_code);
+    console.log('Fetching package details for order:', order.orderNo, 'with packageCode:', order.packageCode);
     
     try {
       // First try to get from localStorage
@@ -45,7 +45,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
           const foundPackage = parsedPackages.find((pkg: any) => {
             const matches = pkg.packageCode === order.packageCode || 
                            pkg.packageCode === order.packageCode;
-            //console.log(`Comparing ${pkg.package_code || pkg.packageCode} with ${order.package_code}: ${matches}`);
+            //console.log(`Comparing ${pkg.package_code || pkg.packageCode} with ${order.packageCode}: ${matches}`);
             return matches;
           });
           
@@ -64,7 +64,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
             setPackageDetails(packageDetails);
             return;
           } else {
-            console.log('Package not found in localStorage for code:', order.package_code);
+            console.log('Package not found in localStorage for code:', order.packageCode);
           }
         } catch (e) {
           console.error('Error parsing stored packages:', e);
@@ -90,7 +90,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
 
   useEffect(() => {
     fetchPackageDetails();
-  }, [fetchPackageDetails]);
+  }, [fetchPackageDetails, order]);
 
   const formatDataSize = (bytes?: number) => {
     if (!bytes) return 'N/A';
@@ -110,7 +110,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
   // Only log once when component mounts or order changes
   useEffect(() => {
     console.log('Order data:', order);
-  }, [order.orderNo]); // Only log when order number changes
+  }, [order]); // Only log when order changes
 
   return (
     <Card sx={{ 

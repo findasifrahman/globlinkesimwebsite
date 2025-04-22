@@ -43,27 +43,9 @@ export default function AccountPage() {
   // Fetch orders when component mounts or session changes
   useEffect(() => {
     if (session?.user) {
-      // Debounce the fetch to prevent multiple calls
-      if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current);
-      }
-      
-      fetchTimeoutRef.current = setTimeout(() => {
-        const now = Date.now();
-        // Only fetch if it's been more than 5 seconds since the last fetch
-        if (now - lastFetchTime.current > 5000) {
-          fetchOrders();
-          lastFetchTime.current = now;
-        }
-      }, 500);
+      fetchOrders();
     }
-    
-    return () => {
-      if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current);
-      }
-    };
-  }, [session?.user?.email]); // Only depend on the email, not the entire session object
+  }, [session?.user, fetchOrders]);
 
   const fetchOrders = useCallback(async () => {
     try {
