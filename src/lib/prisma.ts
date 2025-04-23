@@ -1,22 +1,21 @@
 import { PrismaClient } from '@prisma/client'
 
-// Properly declare the global variable
-declare global {
-  // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  })
 }
 
-// Log the database URL (without the password)
-const dbUrl = process.env.DATABASE_URL || '';
-const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
-console.log('Connecting to database:', maskedUrl);
+type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>
 
-const prismaClient = global.prisma || new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-})
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClientSingleton | undefined
+}
+
+const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
 
 if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prismaClient
+  globalForPrisma.prisma = prisma
 }
 
-export { prismaClient as prisma } 
+export { prisma } 
