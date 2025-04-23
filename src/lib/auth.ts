@@ -5,6 +5,32 @@ import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
+import NextAuth from 'next-auth';
+
+// Extend the built-in session and JWT types
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      emailVerified: Date | null;
+    };
+  }
+  interface User {
+    id: string;
+    email: string;
+    name: string;
+    emailVerified: Date | null;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id: string;
+    emailVerified: Date | null;
+  }
+}
 
 /**
  * Generates an HMAC-SHA256 signature for API requests
