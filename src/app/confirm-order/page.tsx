@@ -1,4 +1,8 @@
-import { Typography, Box } from '@mui/material';
+'use client';
+
+import { Suspense } from 'react';
+import { Typography, Box, CircularProgress } from '@mui/material';
+import { useSearchParams } from 'next/navigation';
 
 // Helper function to get country name from code
 const getCountryName = (code: string): string => {
@@ -46,21 +50,43 @@ const getCountryName = (code: string): string => {
   return countries[code] || code;
 };
 
-// Define packageData before using it
-const packageData = {
-  currencyCode: 'USD',
-  price: 100000, // 10.00 in cents
-  location: 'US'
-};
+function ConfirmOrderContent() {
+  const searchParams = useSearchParams();
+  const packageCode = searchParams.get('packageCode');
+  const location = searchParams.get('location') || 'US';
+  const price = searchParams.get('price') ? parseInt(searchParams.get('price')!) : 100000;
+  const currencyCode = searchParams.get('currencyCode') || 'USD';
 
-// Update the price display in the component
-<Box>
-  <Typography variant="h6" color="primary">
-    {packageData.currencyCode} {(packageData.price / 10000).toFixed(2)}
-  </Typography>
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Confirm Your Order
+      </Typography>
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="h6" color="primary">
+          {currencyCode} {(price / 10000).toFixed(2)}
+        </Typography>
+        <Typography variant="body1">
+          Location: {getCountryName(location)}
+        </Typography>
+        {packageCode && (
+          <Typography variant="body1">
+            Package Code: {packageCode}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+}
 
-  {/* Update the location display */}
-  <Typography variant="body1">
-    Location: {getCountryName(packageData.location)}
-  </Typography>
-</Box> 
+export default function ConfirmOrderPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    }>
+      <ConfirmOrderContent />
+    </Suspense>
+  );
+} 

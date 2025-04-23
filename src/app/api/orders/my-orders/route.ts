@@ -1,37 +1,31 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
-import { headers } from 'next/headers';
+import { prisma } from '@/lib/db';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export async function GET(request: Request) {
   try {
-    const headersList = await headers();
-    const userId = headersList.get('x-user-id');
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
 
     if (!userId) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'User ID is required' },
+        { status: 400 }
       );
     }
 
-    const result = await sql`
-      SELECT 
-        id, 
-        orderNo, 
-        packageCode, 
-        count, 
-        price, 
-        periodNum, 
-        status, 
-        createdAt
-      FROM orderProfile
-      WHERE userId = ${userId}
-      ORDER BY createdAt DESC;
-    `;
-
-    return NextResponse.json({
-      orders: result.rows
+    const orders = await prisma.orders.findMany({
+      where: {
+        user_id: userId,
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
     });
+
+    return NextResponse.json(orders);
   } catch (error) {
     console.error('Error fetching orders:', error);
     return NextResponse.json(

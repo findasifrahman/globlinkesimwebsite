@@ -7,8 +7,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const orderNo = searchParams.get('orderNo');
-    //console.log('Order number from api/fetch-order-profile-single:', orderNo);
-    // Validate that orderNo is provided
+
     if (!orderNo) {
       return NextResponse.json(
         { error: 'Order number is required' },
@@ -33,16 +32,6 @@ export async function GET(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching eSIM profile:', error);
-    
-    // Return a more specific error message if available
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-    
-    // Generic error response
     return NextResponse.json(
       { error: 'Failed to fetch eSIM profile' },
       { status: 500 }
