@@ -1,0 +1,210 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expires   DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model AllPackage {
+  id           Int            @id @default(autoincrement())
+  packageName  String         @map("package_name")
+  packageCode  String         @unique @map("package_code")
+  slug         String         @unique
+  price        Float
+  currencyCode String         @map("currency_code")
+  smsStatus    Boolean        @map("sms_status")
+  duration     Int
+  location     String
+  activeType   Int            @map("active_type")
+  retailPrice  Float          @map("retail_price")
+  speed        String
+  multiregion  Boolean        @default(false)
+  favourite    Boolean        @default(false)
+  operators    String         @default("")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  orders       OrderProfile[]
+  orderRecords Order[]
+
+  @@index([packageCode])
+  @@index([slug])
+  @@map("all_packages")
+}
+
+model User {
+  id                      String                  @id @default(uuid()) @map("user_id")
+  name                    String
+  username               String                  @unique
+  email                  String                  @unique
+  password               String?
+  country                String?
+  address                String?
+  emailVerified          DateTime?
+  image                  String?
+  resetToken             String?                 @unique
+  resetTokenExpiry       DateTime?
+  verificationToken      String?                 @unique
+  verificationTokenExpiry DateTime?
+  accounts               Account[]
+  sessions               Session[]
+  registeredAt           DateTime                @default(now()) @map("registered_at")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  lastLogin              DateTime?               @map("last_login")
+  orders                 OrderProfile[]
+  orderRecords           Order[]
+  emailVerificationTokens EmailVerificationToken[]
+
+  @@index([username])
+  @@index([email])
+  @@map("users")
+}
+
+model OrderProfile {
+  id            String     @id @default(uuid()) @map("transaction_id")
+  userId        String     @map("user_id")
+  packageCode   String     @map("package_code")
+  count         Int
+  price         Float
+  periodNum     Int        @map("period_num")
+  orderNo       String     @unique @map("order_no")
+  status        String     @default("PENDING")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  package       AllPackage @relation(fields: [packageCode], references: [packageCode])
+  user          User       @relation(fields: [userId], references: [id])
+  dataUsageLogs DataUsageLog[]
+  validityUsageLogs ValidityUsageLog[]
+  esimStatusLogs EsimStatusLog[]
+
+  @@index([userId])
+  @@index([packageCode])
+  @@index([orderNo])
+  @@index([status])
+  @@unique([orderNo, id])
+  @@map("order_profiles")
+}
+
+model DataUsageLog {
+  id            Int          @id @default(autoincrement())
+  orderNo       String       @map("order_no")
+  transactionId String       @map("transaction_id")
+  usageData     String       @map("usage_data")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  order         OrderProfile @relation(fields: [orderNo, transactionId], references: [orderNo, id])
+
+  @@index([orderNo])
+  @@map("data_usage_logs")
+}
+
+model ValidityUsageLog {
+  id            Int          @id @default(autoincrement())
+  orderNo       String       @map("order_no")
+  transactionId String       @map("transaction_id")
+  usageData     String       @map("usage_data")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  order         OrderProfile @relation(fields: [orderNo, transactionId], references: [orderNo, id])
+
+  @@index([orderNo])
+  @@map("validity_usage_logs")
+}
+
+model EsimStatusLog {
+  id            Int          @id @default(autoincrement())
+  orderNo       String       @map("order_no")
+  transactionId String       @map("transaction_id")
+  statusData    String       @map("status_data")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  order         OrderProfile @relation(fields: [orderNo, transactionId], references: [orderNo, id])
+
+  @@index([orderNo])
+  @@map("esim_status_logs")
+}
+
+model WebhookEvent {
+  id            String   @id @default(cuid())
+  type          String   // ORDER_STATUS, ESIM_STATUS, DATA_USAGE, VALIDITY_USAGE
+  orderNo       String
+  transactionId String?
+  iccid         String?
+  payload       Json
+  createdAt     DateTime @default(now())
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  orderNo       String   @unique
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id])
+  packageCode   String   @map("package_code")
+  package       AllPackage @relation(fields: [packageCode], references: [packageCode])
+  status        String   // PENDING, PROCESSING, READY_FOR_DOWNLOAD, COMPLETED, FAILED
+  esimStatus    String?  // IN_USE, USED_UP, USED_EXPIRED, UNUSED_EXPIRED, CANCEL, REVOKED
+  smdpStatus    String?  // ENABLED, DISABLED, RELEASED, DELETED, INSTALLATION
+  dataRemaining Int?     // in bytes
+  dataUsed      Int?     // in bytes
+  expiryDate    DateTime?
+  daysRemaining Int?
+  qrCode        String?  // Base64 encoded QR code
+  iccid         String?  // ICCID of the eSIM
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("orders")
+}
