@@ -12,11 +12,11 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000', '*.vercel.app'],
+      allowedOrigins: ['localhost:3000', '*.vercel.app', 'www.globlinksolution.com'],
     },
   },
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'www.globlinksolution.com'],
   },
   // Ensure proper handling of static files
   webpack: (config) => {
@@ -26,8 +26,6 @@ const nextConfig = {
     };
     return config;
   },
-  // Enable static file serving
-  output: 'standalone',
   // Disable static optimization for dynamic routes
   staticPageGenerationTimeout: 1000,
   // Configure dynamic routes
@@ -53,6 +51,10 @@ const nextConfig = {
       },
     ];
   },
+  // Add assetPrefix for production
+  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://www.globlinksolution.com' : '',
+  // Add basePath if your app is not at the root
+  basePath: '',
 }
 
 module.exports = nextConfig 
