@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/init-prisma';
 import crypto from 'crypto';
 import { sendPasswordResetEmail } from '@/lib/email';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
