@@ -14,6 +14,7 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['localhost:3000', '*.vercel.app', 'www.globlinksolution.com'],
     },
+    serverComponentsExternalPackages: ['@prisma/client'],
   },
   images: {
     domains: ['localhost', 'www.globlinksolution.com'],

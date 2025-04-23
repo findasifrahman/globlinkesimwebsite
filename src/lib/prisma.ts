@@ -12,7 +12,7 @@ const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
 console.log('Connecting to database:', maskedUrl);
 
 const prismaClient = global.prisma || new PrismaClient({
-  log: ['query', 'error', 'warn'],
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 })
 
 if (process.env.NODE_ENV !== 'production') {
