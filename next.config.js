@@ -26,8 +26,8 @@ const nextConfig = {
     };
     return config;
   },
-  // Disable static optimization for dynamic routes
-  staticPageGenerationTimeout: 1000,
+  // Remove static optimization for dynamic routes
+  staticPageGenerationTimeout: 0,
   // Configure dynamic routes
   async rewrites() {
     return [
@@ -51,10 +51,25 @@ const nextConfig = {
       },
     ];
   },
-  // Add assetPrefix for production
+  // Configure asset handling
   assetPrefix: process.env.NODE_ENV === 'production' ? 'https://www.globlinksolution.com' : '',
   // Add basePath if your app is not at the root
   basePath: '',
+  // Configure error pages
+  async redirects() {
+    return [
+      {
+        source: '/404',
+        destination: '/',
+        permanent: false,
+      },
+      {
+        source: '/500',
+        destination: '/',
+        permanent: false,
+      },
+    ];
+  },
 }
 
 module.exports = nextConfig 

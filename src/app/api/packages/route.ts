@@ -1,35 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export async function GET(request: Request) {
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const regionType = searchParams.get('regionType');
-    
-    console.log('Fetching packages with regionType:', regionType);
-    
-    // Build the where clause based on regionType
-    const where = regionType === 'multi' 
-      ? { multiregion: true }
-      : regionType === 'single'
-      ? { multiregion: false }
-      : {};
-    
-    console.log('Using where clause:', where);
-    
-    // Fetch packages from database
     const packages = await prisma.allPackage.findMany({
-      where,
+      where: {
+        activeType: 1, // Assuming 1 means active
+      },
       orderBy: {
-        packageName: 'asc',
+        createdAt: 'desc',
       },
     });
-    
-    console.log(`Found ${packages.length} packages (${regionType === 'multi' ? 'multi-region' : regionType === 'single' ? 'single-region' : 'all'})`);
-    
+
     return NextResponse.json(packages);
   } catch (error) {
-    console.error('Error in /api/packages:', error);
+    console.error('Error fetching packages:', error);
     return NextResponse.json(
       { error: 'Failed to fetch packages' },
       { status: 500 }
