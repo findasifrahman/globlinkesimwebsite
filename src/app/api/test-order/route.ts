@@ -22,6 +22,14 @@ function generateHmacSignature(timestamp: string, requestId: string, accessCode:
 }
 
 export async function GET() {
+  // Prevent test orders in production
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Test orders are not allowed in production' },
+      { status: 403 }
+    );
+  }
+
   try {
     // Get a test package from the database
     const testPackage = await prisma.allPackage.findFirst();
@@ -42,39 +50,24 @@ export async function GET() {
     // Prepare the request to Redtea Mobile
     const orderData = {
       transactionId,
-      amount: testPackage.price, // Use price directly from database
+      amount: testPackage.price,
       packageInfoList: [{
         packageCode: testPackage.packageCode,
         count: 1,
-        price: testPackage.price // Use price directly from database
+        price: testPackage.price
       }]
     };
-    
-    // Convert order data to string for signature
-    const requestBody = JSON.stringify(orderData);
-    
+
     // Generate signature
     const signature = generateHmacSignature(
       timestamp,
       transactionId,
       REDTEA_ACCESS_CODE!,
-      requestBody,
+      JSON.stringify(orderData),
       REDTEA_SECRET_KEY!
     );
 
-    // Log the request details for debugging
-    console.log('Request details:', {
-      url: REDTEA_API_URL,
-      headers: {
-        'Content-Type': 'application/json',
-        'RT-AccessCode': REDTEA_ACCESS_CODE,
-        'RT-Timestamp': timestamp,
-        'RT-Signature': signature
-      },
-      body: orderData
-    });
-
-    // Make request to Redtea Mobile API
+    // Make the API request
     const response = await fetch(REDTEA_API_URL, {
       method: 'POST',
       headers: {
@@ -83,42 +76,19 @@ export async function GET() {
         'RT-Timestamp': timestamp,
         'RT-Signature': signature
       },
-      body: requestBody
+      body: JSON.stringify(orderData)
     });
 
-    const responseText = await response.text();
-    console.log('Response text:', responseText);
-    
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (e) {
-      console.error('Failed to parse response as JSON:', e);
-      return NextResponse.json(
-        { error: 'Invalid JSON response from API', responseText },
-        { status: 500 }
-      );
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
     }
 
-    return NextResponse.json({
-      success: true,
-      request: {
-        url: REDTEA_API_URL,
-        headers: {
-          'Content-Type': 'application/json',
-          'RT-AccessCode': REDTEA_ACCESS_CODE,
-          'RT-Timestamp': timestamp,
-          'RT-Signature': signature
-        },
-        body: orderData
-      },
-      response: result
-    });
-
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error testing order creation:', error);
+    console.error('Error in test order:', error);
     return NextResponse.json(
-      { error: 'Failed to test order creation' },
+      { error: 'Failed to process test order' },
       { status: 500 }
     );
   }

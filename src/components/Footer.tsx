@@ -50,6 +50,12 @@ export default function Footer() {
                 Dhaka, Bangladesh
               </Typography>
             </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Language fontSize="small" />
+              <Typography variant="body2">
+                A concern of Intricate Lab
+              </Typography>
+            </Box>
           </Box>
           <Box>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>

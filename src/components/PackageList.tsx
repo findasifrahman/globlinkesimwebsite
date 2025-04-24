@@ -44,7 +44,7 @@ export default function PackageList() {
       if (storedPackages) {
         try {
           const parsedPackages = JSON.parse(storedPackages);
-          if (Array.isArray(parsedPackages) && parsedPackages.length > 0) {
+          if (Array.isArray(parsedPackages)) {
             setAllPackages(parsedPackages);
             setLoading(false);
             return;
