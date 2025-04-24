@@ -1,10 +1,14 @@
 name: CI
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'README.md'
 
 jobs:
   build:
@@ -24,6 +28,8 @@ jobs:
         
       - name: Generate Prisma Client
         run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
       - name: Build
         run: npm run build
