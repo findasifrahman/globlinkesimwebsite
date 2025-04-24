@@ -142,10 +142,12 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
-    signIn: '/login',
+    signIn: '/auth/signin',
+    error: '/auth/error',
   },
   callbacks: {
     async session({ session, token }) {
@@ -157,9 +159,12 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user }) {
       if (user) {
+        token.sub = user.id;
         token.emailVerified = user.emailVerified;
       }
       return token;
     }
-  }
+  },
+  debug: process.env.NODE_ENV === 'development',
+  secret: process.env.NEXTAUTH_SECRET,
 }; 
