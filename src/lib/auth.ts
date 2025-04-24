@@ -94,6 +94,7 @@ export const CustomPrismaAdapter = () => {
         data: {
           ...data,
           username,
+          emailVerified: new Date(), // Auto-verify email for OAuth users
         },
       });
     },
@@ -101,7 +102,7 @@ export const CustomPrismaAdapter = () => {
 };
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: CustomPrismaAdapter(),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,

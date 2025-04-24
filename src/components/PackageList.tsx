@@ -43,7 +43,7 @@ export default function PackageList() {
       
       // Check if packages are already in localStorage
       const storedPackages = localStorage.getItem('packages');
-      console.log('Stored packages:', storedPackages);
+      //console.log('Stored packages:', storedPackages);
       
       if (storedPackages) {
         try {
