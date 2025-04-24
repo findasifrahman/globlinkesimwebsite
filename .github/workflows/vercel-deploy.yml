@@ -86,26 +86,5 @@ jobs:
           working-directory: ./
           vercel-args: '--prod'
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          ESIM_ACCESS_CODE: ${{ secrets.ESIM_ACCESS_CODE }}
-          ESIM_SECRET_KEY: ${{ secrets.ESIM_SECRET_KEY }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          SMTP_FROM: ${{ secrets.SMTP_FROM }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
-          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-          REDTEA_API_URL: ${{ secrets.REDTEA_API_URL }}
-          REDTEA_ACCESS_KEY: ${{ secrets.REDTEA_ACCESS_KEY }}
-          REDTEA_SECRET_KEY: ${{ secrets.REDTEA_SECRET_KEY }}
-          NEXT_PUBLIC_REDTEA_API_URL: ${{ secrets.NEXT_PUBLIC_REDTEA_API_URL }}
-          NEXT_PUBLIC_REDTEA_ACCESS_KEY: ${{ secrets.NEXT_PUBLIC_REDTEA_ACCESS_KEY }}
-          NEXT_PUBLIC_REDTEA_SECRET_KEY: ${{ secrets.NEXT_PUBLIC_REDTEA_SECRET_KEY }} 
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }} 

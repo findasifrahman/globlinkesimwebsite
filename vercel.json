@@ -7,6 +7,13 @@
   "regions": ["iad1"],
   "env": {
     "DATABASE_URL": "@database_url",
+    "NEXTAUTH_URL": "@nextauth_url",
+    "NEXTAUTH_SECRET": "@nextauth_secret",
+    "GOOGLE_CLIENT_ID": "@google_client_id",
+    "GOOGLE_CLIENT_SECRET": "@google_client_secret",
+    "JWT_SECRET": "@jwt_secret",
+    "ESIM_ACCESS_CODE": "@esim_access_code",
+    "ESIM_SECRET_KEY": "@esim_secret_key",
     "SMTP_HOST": "@smtp_host",
     "SMTP_PORT": "@smtp_port",
     "SMTP_USER": "@smtp_user",
@@ -15,6 +22,12 @@
     "EMAIL_FROM": "@email_from",
     "WEBHOOK_SECRET": "@webhook_secret",
     "WEBHOOK_URL": "@webhook_url",
-    "NGROK_AUTH_TOKEN": "@ngrok_auth_token"
+    "NGROK_AUTH_TOKEN": "@ngrok_auth_token",
+    "REDTEA_API_URL": "@redtea_api_url",
+    "REDTEA_ACCESS_KEY": "@redtea_access_key",
+    "REDTEA_SECRET_KEY": "@redtea_secret_key",
+    "NEXT_PUBLIC_REDTEA_API_URL": "@next_public_redtea_api_url",
+    "NEXT_PUBLIC_REDTEA_ACCESS_KEY": "@next_public_redtea_access_key",
+    "NEXT_PUBLIC_REDTEA_SECRET_KEY": "@next_public_redtea_secret_key"
   }
 } 
