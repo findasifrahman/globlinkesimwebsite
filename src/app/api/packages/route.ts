@@ -7,21 +7,29 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    console.log('Fetching packages from database...');
+    //console.log('Fetching packages from database...');
     
+    // First, get the total count of all packages
+    const totalCount = await prisma.allPackage.count();
+    //console.log(`Total packages in database: ${totalCount}`);
+    
+    // Then fetch all packages
     const packages = await prisma.allPackage.findMany({
-      where: {
-        activeType: 1, // Assuming 1 means active
-      },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    console.log(`Found ${packages.length} packages in database`);
+    //console.log(`Fetched ${packages.length} packages from database`);
+    
+    // Log the first few packages to verify the data
+    //console.log('Sample packages:', packages.slice(0, 3));
+    
+    // Log the last few packages to verify we're getting all records
+    //console.log('Last packages:', packages.slice(-3));
 
     if (packages.length === 0) {
-      console.log('No active packages found in database');
+      console.log('No packages found in database');
       return NextResponse.json([], { status: 200 });
     }
 

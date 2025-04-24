@@ -31,7 +31,9 @@ export default function PackageList() {
 
   // Filter packages whenever search or regionType changes
   useEffect(() => {
-    filterPackages();
+    if (allPackages.length > 0) {
+      filterPackages();
+    }
   }, [search, regionType, allPackages]);
 
   const fetchAllPackages = async () => {
@@ -41,20 +43,26 @@ export default function PackageList() {
       
       // Check if packages are already in localStorage
       const storedPackages = localStorage.getItem('packages');
+      console.log('Stored packages:', storedPackages);
+      
       if (storedPackages) {
         try {
           const parsedPackages = JSON.parse(storedPackages);
-          if (Array.isArray(parsedPackages)) {
+          console.log('Parsed packages:', parsedPackages);
+          
+          if (Array.isArray(parsedPackages) && parsedPackages.length > 0) {
+            console.log('Using packages from localStorage, count:', parsedPackages.length);
             setAllPackages(parsedPackages);
+            setFilteredPackages(parsedPackages); // Also update filtered packages
             setLoading(false);
             return;
           }
         } catch (e) {
           console.error('Error parsing stored packages:', e);
-          // If parsing fails, continue to fetch from API
         }
       }
-      
+
+      console.log('Fetching packages from API');
       // If not in localStorage or parsing failed, fetch from API
       const response = await fetch('/api/packages');
       
@@ -63,6 +71,7 @@ export default function PackageList() {
       }
       
       const data = await response.json();
+      console.log('API response data:', data);
       
       if (data.error) {
         throw new Error(data.error);
@@ -72,6 +81,7 @@ export default function PackageList() {
       localStorage.setItem('packages', JSON.stringify(data));
       
       setAllPackages(data);
+      setFilteredPackages(data); // Also update filtered packages
     } catch (error) {
       console.error('Error fetching packages:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch packages');
@@ -81,12 +91,15 @@ export default function PackageList() {
   };
 
   const filterPackages = () => {
-    let filtered = allPackages;
+    //console.log('Filtering packages. Current allPackages:', allPackages);
+    let filtered = [...allPackages];
 
     // Filter by region type
-    filtered = filtered.filter(pkg => 
-      regionType === 'multi' ? pkg.multiregion : !pkg.multiregion
-    );
+    if (regionType === 'multi') {
+      filtered = filtered.filter(pkg => pkg.multiregion);
+    } else {
+      filtered = filtered.filter(pkg => !pkg.multiregion);
+    }
 
     // Filter by search query if exists
     if (search) {
@@ -97,6 +110,7 @@ export default function PackageList() {
       );
     }
 
+    //console.log('Filtered packages:', filtered);
     setFilteredPackages(filtered);
   };
 
