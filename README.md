@@ -1,4 +1,4 @@
-# Next.js 14 Project with Material UI and Docker
+# Next.js esim Project with Material UI and Docker
 
 This is a Next.js 14 project with TypeScript, TailwindCSS, and Material UI, containerized with Docker.
 
