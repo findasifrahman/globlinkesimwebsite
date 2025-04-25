@@ -84,63 +84,73 @@ export default function AccountPage() {
         try {
           // Fetch the eSIM profile for this order
           const profileResponse = await fetch(`/api/fetch-order-profile-single?orderNo=${order.orderNo}`);
-          const profileData = await profileResponse.json();
-          
-          if (profileData.success) {
-            // Extract the updated values
-            const updatedStatus = profileData.data.esimStatus;
-            const updatedDataRemaining = profileData.data.dataRemaining;
-            const updatedDataUsed = profileData.data.dataUsed;
-            const updatedSmdpStatus = profileData.data.smdpStatus;
-            const updatedQrCode = profileData.data.qrCode;
-            
-            // Update the database with the new values
-            try {
-              await fetch('/api/update-order', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  orderNo: order.orderNo,
-                  status: updatedStatus,
-                  dataRemaining: updatedDataRemaining,
-                  dataUsed: updatedDataUsed,
-                  smdpStatus: updatedSmdpStatus,
-                  qrCode: updatedQrCode
-                }),
-              });
-            } catch (updateError) {
-              console.error(`Failed to update order ${order.orderNo} in database:`, updateError);
-            }
-            
-            // Update the order with profile data
-            return {
-              ...order,
-              status: updatedStatus,
-              dataRemaining: updatedDataRemaining,
-              dataUsed: updatedDataUsed,
-              expiryDate: profileData.data.expiryDate,
-              package_code: order.package_code || profileData.data.packageCode || 'unknown',
-              packageCode: order.package_code || profileData.data.packageCode || 'unknown', // For backward compatibility
-              esimStatus: updatedStatus,
-              smdpStatus: updatedSmdpStatus,
-              qrCode: updatedQrCode,
-              iccid: profileData.data.iccid
-            };
-          } else {
-            console.error(`Failed to fetch profile for order ${order.orderNo}:`, profileData.error);
+          if (!profileResponse.ok) {
+            console.error(`Failed to fetch profile for order ${order.orderNo}:`, profileResponse.statusText);
             return order; // Return original order if profile fetch failed
           }
+          
+          const profileData = await profileResponse.json();
+          
+          if (!profileData.success) {
+            console.error(`Profile fetch failed for order ${order.orderNo}:`, profileData.error);
+            return order; // Return original order if profile fetch failed
+          }
+          
+          // Extract the updated values
+          const updatedStatus = profileData.data.esimStatus;
+          const updatedDataRemaining = profileData.data.dataRemaining;
+          const updatedDataUsed = profileData.data.dataUsed;
+          const updatedSmdpStatus = profileData.data.smdpStatus;
+          const updatedQrCode = profileData.data.qrCode;
+          
+          // Update the database with the new values
+          try {
+            const updateResponse = await fetch('/api/update-order', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderNo: order.orderNo,
+                status: updatedStatus,
+                dataRemaining: updatedDataRemaining,
+                dataUsed: updatedDataUsed,
+                smdpStatus: updatedSmdpStatus,
+                qrCode: updatedQrCode
+              }),
+            });
+
+            if (!updateResponse.ok) {
+              console.error(`Failed to update order ${order.orderNo} in database:`, await updateResponse.text());
+            }
+          } catch (updateError) {
+            console.error(`Error updating order ${order.orderNo} in database:`, updateError);
+          }
+          
+          // Update the order with profile data
+          return {
+            ...order,
+            status: updatedStatus,
+            dataRemaining: updatedDataRemaining,
+            dataUsed: updatedDataUsed,
+            expiryDate: profileData.data.expiryDate,
+            package_code: order.package_code || profileData.data.packageCode || 'unknown',
+            packageCode: order.package_code || profileData.data.packageCode || 'unknown', // For backward compatibility
+            esimStatus: updatedStatus,
+            smdpStatus: updatedSmdpStatus,
+            qrCode: updatedQrCode,
+            iccid: profileData.data.iccid
+          };
         } catch (error) {
-          console.error(`Error fetching profile for order ${order.orderNo}:`, error);
-          return order; // Return original order if profile fetch failed
+          console.error(`Error processing order ${order.orderNo}:`, error);
+          return order; // Return original order if any error occurs
         }
       }));
       
       // Update state with processed orders
       setOrders(processedOrders);
     } catch (err) {
+      console.error('Error in fetchOrders:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch orders');
     } finally {
       setLoading(false);

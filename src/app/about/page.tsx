@@ -233,7 +233,7 @@ export default function AboutPage() {
                   <PhoneIcon />
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
-                    <Typography variant="body1">+1 (555) 123-4567</Typography>
+                    <Typography variant="body1">+88 01715 489878</Typography>
                   </Box>
                 </ContactInfoItem>
                 
@@ -241,7 +241,7 @@ export default function AboutPage() {
                   <LocationOnIcon />
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Address</Typography>
-                    <Typography variant="body1">123 Tech Street, Silicon Valley, CA 94025</Typography>
+                    <Typography variant="body1">House:39, Road:2 Mirpur-12, Pallabi, Dhaka-1216, Bangladesh</Typography>
                   </Box>
                 </ContactInfoItem>
               </StyledPaper>

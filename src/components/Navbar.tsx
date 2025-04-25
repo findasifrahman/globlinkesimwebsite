@@ -220,14 +220,6 @@ export default function Navbar() {
                   <AccountCircle fontSize="small" sx={{ mr: 1 }} />
                   My Account
                 </MenuItem>
-                <MenuItem onClick={() => { handleClose(); router.push('/orders'); }}>
-                  <Notifications fontSize="small" sx={{ mr: 1 }} />
-                  My Orders
-                </MenuItem>
-                <MenuItem onClick={() => { handleClose(); router.push('/settings'); }}>
-                  <Settings fontSize="small" sx={{ mr: 1 }} />
-                  Settings
-                </MenuItem>
                 <MenuItem onClick={handleSignOut}>
                   <Logout fontSize="small" sx={{ mr: 1 }} />
                   Sign Out

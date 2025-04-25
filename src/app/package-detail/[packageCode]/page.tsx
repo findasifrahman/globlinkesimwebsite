@@ -443,7 +443,7 @@ export default function PackageDetailPage() {
   return (
     <>
       <Navbar />
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box 
           sx={{ 
             display: 'grid', 
@@ -451,7 +451,7 @@ export default function PackageDetailPage() {
             gap: 4 
           }}
         >
-          {/* Package Details */}
+          {/* Left Column - Package Details */}
           <Box>
             <Paper 
               elevation={3} 
@@ -463,6 +463,7 @@ export default function PackageDetailPage() {
                 border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
               }}
             >
+              {/* Package Header */}
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 {packageData.multiregion ? (
                   <Avatar 
@@ -500,6 +501,7 @@ export default function PackageDetailPage() {
                 )}
               </Box>
               
+              {/* Package Chips */}
               <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
                 <Chip 
                   label={packageData.multiregion ? "Multi-Region" : "Single Country"} 
@@ -529,10 +531,11 @@ export default function PackageDetailPage() {
               
               <Divider sx={{ my: 3 }} />
               
+              {/* Package Details */}
               <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
                 Package Details
-      </Typography>
-      
+              </Typography>
+              
               <Box 
                 sx={{ 
                   display: 'grid',
@@ -590,10 +593,12 @@ export default function PackageDetailPage() {
               )}
             </Paper>
             
+            {/* Package Description */}
             <Paper 
               elevation={3} 
               sx={{ 
                 p: 3,
+                mb: 3,
                 borderRadius: 2,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 1)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
                 border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
@@ -612,6 +617,89 @@ export default function PackageDetailPage() {
                   : `travelers visiting ${getCountryName(packageData.location)}`}.
               </Typography>
             </Paper>
+
+            {/* Purchase Options - Now appears here in mobile view */}
+            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+              <Paper 
+                elevation={3} 
+                sx={{ 
+                  p: 3, 
+                  mb: 3,
+                  borderRadius: 2,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.1)} 0%, ${alpha(theme.palette.background.paper, 1)} 100%)`,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                }}
+              >
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
+                  Purchase Options
+                </Typography>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="h4" color="primary" sx={{ mr: 2, fontWeight: 'bold' }}>
+                    {packageData.currencyCode} {(packageData.retailPrice / 10000).toFixed(2)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    per package
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="body1" sx={{ mr: 2, fontWeight: 'bold' }}>
+                    Quantity:
+                  </Typography>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => handleQuantityChange(-1)}
+                    sx={{ minWidth: 40 }}
+                  >
+                    -
+                  </Button>
+                  <Typography variant="body1" sx={{ mx: 2, minWidth: 30, textAlign: 'center', fontWeight: 'bold' }}>
+                    {quantity}
+                  </Typography>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => handleQuantityChange(1)}
+                    sx={{ minWidth: 40 }}
+                  >
+                    +
+                  </Button>
+                </Box>
+                
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    fullWidth 
+                    size="large"
+                    onClick={handleBuyNow}
+                    sx={{ 
+                      py: 1.5,
+                      fontWeight: 'bold',
+                      borderRadius: 2
+                    }}
+                  >
+                    Buy Now
+                  </Button>
+                </Box>
+                
+                <Box 
+                  sx={{ 
+                    mt: 3, 
+                    p: 2, 
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+                  }}
+                >
+                  <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
+                    Total: {packageData.currencyCode} {((packageData.retailPrice / 10000) * quantity).toFixed(2)}
+                  </Typography>
+                </Box>
+              </Paper>
+            </Box>
             
             {/* Related Packages Section */}
             {!packageData.multiregion && relatedPackages.length > 0 && (
@@ -621,8 +709,8 @@ export default function PackageDetailPage() {
                 </Typography>
                 <Typography variant="body1" paragraph>
                   Check out these other packages for {getCountryName(packageData.location)}:
-      </Typography>
-      
+                </Typography>
+                
                 <Box 
                   sx={{ 
                     display: 'grid',
@@ -658,8 +746,8 @@ export default function PackageDetailPage() {
                           <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
                             {formatPackageName(pkg.packageName)}
                           </Typography>
-      </Box>
-      
+                        </Box>
+                        
                         <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
                           <Chip 
                             label={`${pkg.duration} days`} 
@@ -694,14 +782,14 @@ export default function PackageDetailPage() {
                         </Button>
                       </CardActions>
                     </Card>
-            ))}
-          </Box>
+                  ))}
+                </Box>
               </Box>
             )}
           </Box>
           
-          {/* Purchase Options */}
-          <Box>
+          {/* Right Column - Purchase Options (Desktop only) */}
+          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
             <Paper 
               elevation={3} 
               sx={{ 
