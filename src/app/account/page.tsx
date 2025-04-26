@@ -98,17 +98,17 @@ export default function AccountPage() {
           
           const profileData = await profileResponse.json();
           console.log("profileData---",profileData);
-          if (!profileData.success) {
+          if (!profileData) {
             console.error(`Profile fetch failed for order ${order.orderNo}:`, profileData.error);
             return order; // Return original order if profile fetch failed
           }
           
           // Extract the updated values
-          const updatedStatus = profileData.data.esimStatus;
-          const updatedDataRemaining = profileData.data.dataRemaining;
-          const updatedDataUsed = profileData.data.dataUsed;
-          const updatedSmdpStatus = profileData.data.smdpStatus;
-          const updatedQrCode = profileData.data.qrCode;
+          const updatedStatus = profileData.esimStatus;
+          const updatedDataRemaining = profileData.dataRemaining;
+          const updatedDataUsed = profileData.dataUsed;
+          const updatedSmdpStatus = profileData.smdpStatus;
+          const updatedQrCode = profileData.qrCode;
           
           // Update the database with the new values
           try {
@@ -133,20 +133,20 @@ export default function AccountPage() {
           } catch (updateError) {
             console.error(`Error updating order ${order.orderNo} in database:`, updateError);
           }
-          
+          console.log("profileData.data.update Successfully order---",order);
           // Update the order with profile data
           return {
             ...order,
             status: updatedStatus,
             dataRemaining: updatedDataRemaining,
             dataUsed: updatedDataUsed,
-            expiryDate: profileData.data.expiryDate,
-            package_code: order.package_code || profileData.data.packageCode || 'unknown',
-            packageCode: order.package_code || profileData.data.packageCode || 'unknown', // For backward compatibility
+            expiryDate: profileData.expiryDate,
+            package_code: order.package_code || profileData.packageCode || 'unknown',
+            packageCode: order.package_code || profileData.packageCode || 'unknown', // For backward compatibility
             esimStatus: updatedStatus,
             smdpStatus: updatedSmdpStatus,
             qrCode: updatedQrCode,
-            iccid: profileData.data.iccid
+            iccid: profileData.iccid
           };
         } catch (error) {
           console.error(`Error processing order ${order.orderNo}:`, error);

@@ -22,6 +22,25 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isActive = order.status === 'ACTIVE' || order.status === 'PROCESSING' || order.status === 'READY_FOR_DOWNLOAD' || order.status === 'GOT_RESOURCE';
   
+  // Format date to DD/MM/YYYY HH:MM
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    
+    // Format as DD/MM/YYYY HH:MM
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
+  
   // Use useCallback to prevent unnecessary re-renders
   const fetchPackageDetails = useCallback(async () => {
     if (!order.package_code) {
@@ -37,7 +56,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
       if (storedPackages) {
         try {
           const parsedPackages = JSON.parse(storedPackages);
-          console.log('Parsed packages from localStorage:', parsedPackages);
+          //console.log('Parsed packages from localStorage:', parsedPackages);
           
           // Find the package that matches the order's package_code
           const foundPackage = parsedPackages.find((pkg: any) => {
@@ -47,7 +66,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
             return matches;
           });
           
-          console.log('Found package:', foundPackage);
+          //console.log('Found package:', foundPackage);
           
           if (foundPackage) {
             const packageDetails = {
@@ -234,6 +253,21 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
                 </Typography>
               </Box>
             )}
+            {order.createdAt !== undefined && (
+              <Box sx={{ 
+                p: 1.5, 
+                bgcolor: '#f5f5f5', 
+                borderRadius: '8px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <Typography variant="body2" color="text.secondary">
+                  Purchase Date
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {formatDate(order.createdAt)}
+                </Typography>
+              </Box>
+            )}
             {order.expiryDate && (
               <Box sx={{ 
                 p: 1.5, 
@@ -242,7 +276,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
                 border: '1px solid #e0e0e0'
               }}>
                 <Typography variant="body2" color="text.secondary">
-                  Expiry Date
+                  Activate Before
                 </Typography>
                 <Typography 
                   variant="h6" 

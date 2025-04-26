@@ -23,7 +23,7 @@ export async function GET(
         userId: session.user.id,
       },
       include: {
-        profile: true,
+        //profile: true,
       },
     });
 
@@ -33,6 +33,7 @@ export async function GET(
 
     // Query the eSIM profile from Redtea Mobile
     const esimProfile = await queryEsimProfile(orderNo);
+    
     console.log("esimProfile---",esimProfile);
     if (!esimProfile) {
       return NextResponse.json({ error: 'Failed to fetch eSIM profile' }, { status: 500 });
@@ -48,11 +49,11 @@ export async function GET(
         esimStatus: esimProfile.esimStatus,
         dataRemaining: esimProfile.dataRemaining,
         dataUsed: esimProfile.dataUsed,
-        expiryDate: esimProfile.expiryDate,
+        expiryDate: esimProfile.expiryDate ? new Date(esimProfile.expiryDate) : null,
         daysRemaining: esimProfile.daysRemaining,
       },
       include: {
-        profile: true,
+        //profile: true,
       },
     });
 

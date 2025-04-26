@@ -11,6 +11,7 @@ export interface Order {
   dataUsed?: number;
   expiryDate?: string;
   daysRemaining?: number;
+  createdAt?: string;
   profile?: {
     packageCode: string;
     count: number;
