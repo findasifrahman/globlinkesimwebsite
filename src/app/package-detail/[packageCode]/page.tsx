@@ -769,7 +769,7 @@ export default function PackageDetailPage() {
                         </Box>
                         
                         <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
-                          {pkg.currencyCode} {(pkg.price / 10000).toFixed(2)}
+                          {pkg.currencyCode} {(pkg.retailPrice / 10000).toFixed(2)}
                         </Typography>
                       </CardContent>
                       <CardActions>

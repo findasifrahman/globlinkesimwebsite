@@ -15,7 +15,7 @@ export async function GET(
     }
 
     const { orderNo } = params;
-
+    console.log("orderNo reciew from url---",orderNo);  //
     // Get the order and verify ownership
     const order = await prisma.order.findFirst({
       where: {
@@ -33,7 +33,7 @@ export async function GET(
 
     // Query the eSIM profile from Redtea Mobile
     const esimProfile = await queryEsimProfile(orderNo);
-
+    console.log("esimProfile---",esimProfile);
     if (!esimProfile) {
       return NextResponse.json({ error: 'Failed to fetch eSIM profile' }, { status: 500 });
     }

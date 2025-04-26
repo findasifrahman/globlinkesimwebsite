@@ -90,10 +90,19 @@ export default function Navbar() {
     <List>
       {menuItems.map((item) => (
         <ListItem 
-          component="div"
+          component={item.href ? Link : 'div'}
+          href={item.href}
           sx={{ cursor: 'pointer' }}
           key={item.label}
-          onClick={item.onClick}
+          onClick={(e) => {
+            if (item.onClick) {
+              item.onClick();
+            }
+            if (item.href) {
+              router.push(item.href);
+            }
+            setMobileOpen(false); // Close drawer after navigation
+          }}
         >
           <ListItemText primary={item.label} />
         </ListItem>

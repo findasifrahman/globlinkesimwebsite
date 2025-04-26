@@ -82,15 +82,22 @@ export default function AccountPage() {
       // Process each order and fetch its profile data
       const processedOrders = await Promise.all(data.orders.map(async (order: any) => {
         try {
-          // Fetch the eSIM profile for this order
-          const profileResponse = await fetch(`/api/fetch-order-profile-single?orderNo=${order.orderNo}`);
+          // Fetch the eSIM profile for this order using the correct API endpoint
+          //${order.orderNo}
+          const profileResponse = await fetch(`/api/orders/${order.orderNo}/profile`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
           if (!profileResponse.ok) {
             console.error(`Failed to fetch profile for order ${order.orderNo}:`, profileResponse.statusText);
             return order; // Return original order if profile fetch failed
           }
           
           const profileData = await profileResponse.json();
-          
+          console.log("profileData---",profileData);
           if (!profileData.success) {
             console.error(`Profile fetch failed for order ${order.orderNo}:`, profileData.error);
             return order; // Return original order if profile fetch failed

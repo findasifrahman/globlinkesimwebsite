@@ -7,6 +7,7 @@ export async function GET(
   request: Request,
   { params }: { params: { orderNo: string } }
 ) {
+  console.log("params, we are here---",params);
   try {
     const headersList = headers();
     const userId = headersList.get('x-user-id');
@@ -63,7 +64,7 @@ export async function GET(
     }
 
     const data = await response.json();
-
+    console.log("data for esim single query---",data);
     // Transform the response to match our frontend needs
     return NextResponse.json({
       status: data.status,
