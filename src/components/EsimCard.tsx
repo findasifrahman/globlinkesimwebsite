@@ -47,6 +47,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
       console.log('No package_code available for order:', order.orderNo);
       return;
     }
+
     
     console.log('Fetching package details for order:', order.orderNo, 'with package_code:', order.package_code);
     

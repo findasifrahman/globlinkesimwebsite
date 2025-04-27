@@ -208,3 +208,21 @@ model Order {
 
   @@map("orders")
 }
+
+model PaymentWebhookState {
+  id            String      @id @default(uuid())
+  orderId       String      @map("order_id")
+  status        String      @default("pending") // pending, completed, failed
+  transactionId String?     @map("transaction_id")
+  pmId          String      @map("pm_id")
+  amount        Decimal     @db.Decimal(10, 2)
+  currency      String
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  userId        String?     @map("user_id")
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@map("payment_webhook_states")
+}

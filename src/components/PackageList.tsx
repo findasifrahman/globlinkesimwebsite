@@ -568,6 +568,20 @@ export default function PackageList() {
             >
               Packages for {selectedRegion}
             </Typography>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              onClick={() => setModalOpen(false)}
+              sx={{ 
+                ml: 'auto',
+                display: { xs: 'block', sm: 'none' },
+                minWidth: 'auto',
+                px: 2,
+                py: 1
+              }}
+            >
+              Close
+            </Button>
           </Box>
           <Box sx={{ 
             width: '100%',
@@ -650,8 +664,8 @@ export default function PackageList() {
                           width: '100%'
                         }}
                       >
-                        {pkg.packageName.length > 25 
-                          ? `${pkg.packageName.substring(0, 25)}...`
+                        {pkg.packageName.length > 28 
+                          ? `${pkg.packageName.substring(0, 28)}...`
                           : pkg.packageName}
                       </Typography>
                       <Typography 
@@ -665,12 +679,44 @@ export default function PackageList() {
                         }}
                       >
                         ${(pkg.retailPrice / 10000).toFixed(2)}
-                      </Typography>
+          </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
               ))}
             </Grid>
+          </Box>
+          <Box sx={{ 
+            width: '100%', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            mt: 3,
+            pt: 2,
+            borderTop: '1px solid',
+            borderColor: 'divider'
+          }}>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={() => setModalOpen(false)}
+              sx={{ 
+                minWidth: '150px',
+                py: 1.5,
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 0 rgba(0,0,0,0.1)',
+                '&:hover': {
+                  transform: 'translateY(2px)',
+                  boxShadow: '0 2px 0 rgba(0,0,0,0.1)',
+                },
+                '&:active': {
+                  transform: 'translateY(4px)',
+                  boxShadow: '0 0 0 rgba(0,0,0,0.1)',
+                }
+              }}
+            >
+              Close
+            </Button>
           </Box>
         </Box>
       </Modal>

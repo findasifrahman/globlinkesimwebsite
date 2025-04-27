@@ -8,6 +8,8 @@ const SECRET_KEY = process.env.ESIM_SECRET_KEY || '651c41ac694a4638902461297b67b
 
 export async function POST() {
   try {
+
+
     // Generate timestamp for the request
     const timestamp = Math.floor(Date.now() / 1000).toString();
     
