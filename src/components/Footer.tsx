@@ -72,7 +72,7 @@ export default function Footer() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Language fontSize="small" />
               <Typography variant="body2">
-                (www.intricatlabcom.com)
+                (www.intricatlab.com)
               </Typography>
             </Box>
           </Box>
