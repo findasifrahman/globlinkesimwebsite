@@ -247,6 +247,23 @@ export default function PackageList() {
       setLoading(true);
       setError(null);
       
+      // Check if packages are already in localStorage
+      const storedPackages = localStorage.getItem('packages');
+      if (storedPackages) {
+        try {
+          const parsedPackages = JSON.parse(storedPackages);
+          if (Array.isArray(parsedPackages) && parsedPackages.length > 0) {
+            setAllPackages(parsedPackages);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing stored packages:', e);
+          // If parsing fails, continue to fetch from API
+        }
+      }
+      
+      // If not in localStorage or parsing failed, fetch from API
       const response = await fetch('/api/packages');
       
       if (!response.ok) {
@@ -259,6 +276,9 @@ export default function PackageList() {
         throw new Error(data.error);
       }
 
+      // Store in localStorage for future use
+      localStorage.setItem('packages', JSON.stringify(data));
+      
       setAllPackages(data);
     } catch (error) {
       console.error('Error fetching packages:', error);

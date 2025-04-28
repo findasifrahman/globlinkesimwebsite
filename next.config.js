@@ -12,7 +12,7 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000', '*.vercel.app', 'www.globlinksolution.com'],
+      allowedOrigins: ['localhost:3000','https://67b7-103-199-168-202.ngrok-free.app', '*.vercel.app', 'www.globlinksolution.com'],
     },
     serverComponentsExternalPackages: ['@prisma/client'],
   },

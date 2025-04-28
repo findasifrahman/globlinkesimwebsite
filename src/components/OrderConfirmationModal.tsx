@@ -82,49 +82,10 @@ export default function OrderConfirmationModal({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pollingStatus, setPollingStatus] = useState<string>('');
+  const [status, setStatus] = useState<string>('');
   const theme = useTheme();
 
-  // Function to poll the order status using the server-side API
-  const pollOrderStatus = async (orderNo: string, maxAttempts = 30, intervalMs = 2000) => {
-    console.log(`[pollOrderStatus] Starting to poll for order: ${orderNo}`);
-    setPollingStatus(`Checking order status for ${orderNo}...`);
-    
-    try {
-      const response = await fetch('/api/esim/poll-status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderNo,
-          maxAttempts,
-          intervalMs
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to poll order status');
-      }
-
-      const data = await response.json();
-      console.log(`[pollOrderStatus] Response:`, data);
-
-      if (data.isReady) {
-        setPollingStatus(`Order ${orderNo} is ready!`);
-        return true;
-      } else {
-        setPollingStatus(`Order status not ready yet. You can check your order status later.`);
-        return false;
-      }
-    } catch (error) {
-      console.error(`[pollOrderStatus] Error:`, error);
-      setPollingStatus(`Error checking order status: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return false;
-    }
-  };
-
+  // Function to initiate payment
   const handleConfirmOrder = async () => {
     if (!session) {
       router.push('/login');
@@ -133,54 +94,49 @@ export default function OrderConfirmationModal({
 
     setLoading(true);
     setError(null);
-    setPollingStatus('Creating order...');
-
+    setStatus('Initiating payment...');
+    console.log("initiating payment...")
     try {
-      const response = await fetch('/api/orders', {
+      // Generate a unique order ID
+      const timestamp = Date.now();
+      const newOrderId = `${packageDetails.packageCode}-${timestamp}`;
+      console.log("order id created at payment initiation", newOrderId);
+      console.log("package details is", packageDetails);
+
+      // Create payment with Payssion
+      const paymentResponse = await fetch('/api/payment/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          packageCode: packageDetails.packageCode,
-          count: quantity,
-          price: packageDetails.price * quantity
+          orderId: newOrderId,
+          amount: (packageDetails.retailPrice * quantity / 10000).toFixed(2), // Convert to actual currency amount
+          currency: packageDetails.currencyCode,
+          description: `eSIM Order: ${packageDetails.packageName} (${quantity} units)`
         }),
       });
 
-      const data = await response.json();
+      const paymentData = await paymentResponse.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create order');
+      if (!paymentResponse.ok) {
+        throw new Error(paymentData.error || 'Failed to create payment');
       }
 
-      setPollingStatus(`Order created: ${data.order.orderNo}. Checking status...`);
-      console.log(`[handleConfirmOrder] Order created: ${data.order.orderNo}`);
-      
-      // Start polling for order status
-      const orderNo = data.order.orderNo;
-      
-      // Poll for order status
-      const isReady = await pollOrderStatus(orderNo);
-      
-      if (isReady) {
-        // If the order is ready, redirect to the order details page
-        router.push(`/orders/${orderNo}`);
+      if (paymentData.redirect_url) {
+        setStatus(`Redirecting to payment page...`);
+        // Redirect to payment page in the same window
+        window.location.href = paymentData.redirect_url;
       } else {
-        // If polling times out, still redirect but show a message
-        setPollingStatus(`Order created but not yet ready. Redirecting to order details...`);
-        setTimeout(() => {
-          router.push(`/orders/${orderNo}`);
-        }, 2000);
+        throw new Error('No redirect URL received from payment provider');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create order');
-    } finally {
+      setError(err instanceof Error ? err.message : 'Failed to process payment');
       setLoading(false);
     }
   };
 
-  const totalPrice = (packageDetails.price * quantity) / 10000;
+  const totalPrice = (packageDetails.retailPrice * quantity) / 10000;
 
   return (
     <Dialog 
@@ -211,9 +167,9 @@ export default function OrderConfirmationModal({
           </Alert>
         )}
         
-        {pollingStatus && (
+        {status && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            {pollingStatus}
+            {status}
           </Alert>
         )}
         
@@ -244,7 +200,7 @@ export default function OrderConfirmationModal({
           <Typography><strong>Duration:</strong> {packageDetails.duration} days</Typography>
           <Typography><strong>Speed:</strong> {packageDetails.speed}</Typography>
           <Typography><strong>Quantity:</strong> {quantity}</Typography>
-          <Typography><strong>Price per unit:</strong> {packageDetails.currencyCode} {(packageDetails.price / 10000).toFixed(2)}</Typography>
+          <Typography><strong>Price per unit:</strong> {packageDetails.currencyCode} {(packageDetails.retailPrice / 10000).toFixed(2)}</Typography>
           {packageDetails.operators && (
             <Typography><strong>Operators:</strong> {packageDetails.operators}</Typography>
           )}
@@ -265,7 +221,7 @@ export default function OrderConfirmationModal({
         </Paper>
 
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          By confirming this order, you agree to purchase the eSIM package. The eSIM will be delivered to your email once the order is processed.
+          By confirming this order, you agree to purchase the eSIM package. The eSIM will be delivered to your email once the payment is completed and the order is processed.
         </Typography>
       </DialogContent>
       <DialogActions sx={{ 

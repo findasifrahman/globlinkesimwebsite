@@ -233,7 +233,7 @@ export default function AboutPage() {
                   <PhoneIcon />
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
-                    <Typography variant="body1">+88 01715 489878</Typography>
+                    <Typography variant="body1">+88017130494275, +8801719086713</Typography>
                   </Box>
                 </ContactInfoItem>
                 
@@ -241,7 +241,7 @@ export default function AboutPage() {
                   <LocationOnIcon />
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Address</Typography>
-                    <Typography variant="body1">House:39, Road:2 Mirpur-12, Pallabi, Dhaka-1216, Bangladesh</Typography>
+                    <Typography variant="body1">Plot-1, Road-6, Block-A, Section-10, Dhaka-1216, Bangladesh</Typography>
                   </Box>
                 </ContactInfoItem>
               </StyledPaper>

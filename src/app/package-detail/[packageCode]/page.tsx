@@ -443,7 +443,7 @@ export default function PackageDetailPage() {
   return (
     <>
       <Navbar />
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box 
           sx={{ 
             display: 'grid', 
@@ -534,8 +534,8 @@ export default function PackageDetailPage() {
               {/* Package Details */}
               <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
                 Package Details
-              </Typography>
-              
+      </Typography>
+      
               <Box 
                 sx={{ 
                   display: 'grid',
@@ -632,8 +632,8 @@ export default function PackageDetailPage() {
               >
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
                   Purchase Options
-                </Typography>
-                
+      </Typography>
+      
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                   <Typography variant="h4" color="primary" sx={{ mr: 2, fontWeight: 'bold' }}>
                     {packageData.currencyCode} {(packageData.retailPrice / 10000).toFixed(2)}
@@ -699,8 +699,8 @@ export default function PackageDetailPage() {
                   </Typography>
                 </Box>
               </Paper>
-            </Box>
-            
+      </Box>
+      
             {/* Related Packages Section */}
             {!packageData.multiregion && relatedPackages.length > 0 && (
               <Box sx={{ mt: 6 }}>
@@ -724,7 +724,7 @@ export default function PackageDetailPage() {
                 >
                   {relatedPackages.map((pkg) => (
                     <Card 
-                      key={pkg.packageCode}
+                key={pkg.packageCode} 
                       elevation={2} 
                       sx={{ 
                         height: '100%',
@@ -782,8 +782,8 @@ export default function PackageDetailPage() {
                         </Button>
                       </CardActions>
                     </Card>
-                  ))}
-                </Box>
+            ))}
+          </Box>
               </Box>
             )}
           </Box>

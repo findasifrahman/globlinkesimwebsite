@@ -1,18 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { md5sum } from '@/utils/hash';
+
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
-  /// test code by asif
 
-  const signature = md5sum(process.env.PAYSSION_API_KEY, "payssion_test", "1.00", "USD", "123456789", process.env.PAYSSION_SECRET_KEY);
-  console.log("MD5 Signature RETURN IS  ----:", signature);  
-  ///
   try {
-    //console.log('Fetching packages from database...');
+    console.log('Fetching packages from database...');
     
     // First, get the total count of all packages
     const totalCount = await prisma.allPackage.count();
@@ -25,7 +21,7 @@ export async function GET() {
       },
     });
 
-    //console.log(`Fetched ${packages.length} packages from database`);
+    console.log(`Fetched ${packages.length} packages from database`);
     
     // Log the first few packages to verify the data
     //console.log('Sample packages:', packages.slice(0, 3));

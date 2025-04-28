@@ -12,6 +12,7 @@ import {
   Email,
   Phone,
   LocationOn,
+  LinkedIn,
 } from '@mui/icons-material';
 
 export default function Footer() {
@@ -42,18 +43,36 @@ export default function Footer() {
               Globlink
             </Typography>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Your trusted provider of global eSIM solutions for travelers worldwide.
+               Trusted provider of global eSIM solutions.
             </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Phone fontSize="small" />
+              <Typography variant="body2">
+                +88017130494275, +8801719086713
+              </Typography>
+            </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <LocationOn fontSize="small" />
               <Typography variant="body2">
-                Dhaka, Bangladesh
+                Plot-1, Road-6, Block-A, Section-10
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <LocationOn fontSize="small" />
+              <Typography variant="body2">
+                Mirpur, Dhaka-1216, Bangladesh
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Language fontSize="small" />
               <Typography variant="body2">
                 A concern of Intricate Lab
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Language fontSize="small" />
+              <Typography variant="body2">
+                (www.intricatlabcom.com)
               </Typography>
             </Box>
           </Box>
@@ -78,7 +97,7 @@ export default function Footer() {
           </Box>
           <Box>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Contact Us
+              Social
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -89,6 +108,26 @@ export default function Footer() {
                   sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
                   globlinksolution@gmail.com
+                </Link>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Email fontSize="small" />
+                <Link 
+                  href="mailto:info.globlink.online" 
+                  color="inherit" 
+                  sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  asifrahman@intricatlab.com
+                </Link>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LinkedIn fontSize="small" />
+                <Link 
+                  href="https://www.linkedin.com/company/intricatelab/" 
+                  color="inherit" 
+                  sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  https://www.linkedin.com/company/intricatelab/
                 </Link>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

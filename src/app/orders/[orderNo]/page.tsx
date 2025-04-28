@@ -31,7 +31,7 @@ interface OrderDetailsPageProps {
 }
 
 export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
-  const orderNo = React.use(Promise.resolve(params.orderNo));
+  const orderNo = params.orderNo;
   const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
