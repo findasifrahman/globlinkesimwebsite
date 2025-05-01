@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { pollForOrderStatus, queryEsimProfile } from '@/lib/esim';
-import { sendEsimEmail } from '@/lib/email';
+import { sendEsimEmail,sendPaymentConfirmationEmail } from '@/lib/email';
 
 import crypto from 'crypto';
 //import {  p } from '@/app/api/esim/poll-status/route';
@@ -118,6 +118,24 @@ export async function GET(req: Request) {
       }
       console.log("Successfully created order after payment--", orderAfterPayment);
 
+      // new- queus the esim order processing
+              // 3. Queue the eSIM processing job
+              await prisma.processingQueue.create({
+                data: {
+                  orderNo: orderId,
+                  type: 'ESIM_ORDER',
+                  status: 'PENDING',
+                  retryCount: 0,
+                  createdAt: new Date(),
+                  updatedAt: new Date()
+                }
+              });
+            // 4. Send immediate confirmation email
+            await sendPaymentConfirmationEmail(session.user.email, orderId);
+                  // 5. Redirect to processing page
+            return NextResponse.redirect(new URL(`/payment-success/${orderId}`, baseUrl));
+     
+            /*
       // Create eSIM order with Redtea API
       await createesimorder(
         updatedOrderBeforePayment.packageCode,
@@ -137,6 +155,19 @@ export async function GET(req: Request) {
       // Query eSIM profile details
       const esimProfile = await queryEsimProfile(webhook_esimProfile.content.orderNo);
 
+      //
+              // Prepare extended eSIM profile for email
+              const extendedEsimProfile = {
+                ...esimProfile,
+                packageCode: updatedOrderBeforePayment.packageCode,
+                amount: Number(paymentState.amount),
+                currency: paymentState.currency,
+                discountCode: updatedOrderBeforePayment.discountCode,
+              };
+        
+              // Send email with eSIM details
+              await sendEsimEmail(session.user.email, orderId, extendedEsimProfile);
+      //
       // Update order with eSIM profile details
       const updatedOrderAfterPayment = await prisma.esimOrderAfterPayment.update({
         where: { paymentOrderNo: orderId },
@@ -159,17 +190,7 @@ export async function GET(req: Request) {
       }
       console.log("Successfully updated order after esim order is created--", updatedOrderAfterPayment);
 
-      // Prepare extended eSIM profile for email
-      const extendedEsimProfile = {
-        ...esimProfile,
-        packageCode: updatedOrderBeforePayment.packageCode,
-        amount: Number(paymentState.amount),
-        currency: paymentState.currency,
-        discountCode: updatedOrderBeforePayment.discountCode,
-      };
 
-      // Send email with eSIM details
-      await sendEsimEmail(session.user.email, orderId, extendedEsimProfile);
 
       // Get the updated order to get the correct orderNo
       const updatedOrder = await prisma.esimOrderAfterPayment.findUnique({
@@ -183,6 +204,7 @@ export async function GET(req: Request) {
 
       // Redirect to success page using the correct order number
       return NextResponse.redirect(new URL(`/orders/${updatedOrder.orderNo}`, baseUrl));
+      */
     } else {
       // Redirect to failure page using the same base URL
       console.log("payment state is failed or pending--", orderId);

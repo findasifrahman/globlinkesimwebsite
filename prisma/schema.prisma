@@ -272,3 +272,19 @@ model PaymentWebhookState {
   @@index([status])
   @@map("payment_webhook_states")
 }
+
+// prisma/schema.prisma
+model ProcessingQueue {
+  id         String   @id @default(cuid())
+  orderNo    String   @map("order_no")
+  type       String   // ESIM_ORDER_PROCESSING, etc.
+  status     String   // PENDING, COMPLETED, FAILED
+  error      String?
+  retryCount Int      @default(0)
+  lastAttempt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([orderNo])
+  @@map("processing_queue")
+}

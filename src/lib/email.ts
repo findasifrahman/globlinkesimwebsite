@@ -212,4 +212,47 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     subject,
     html,
   });
+}
+
+export async function sendPaymentConfirmationEmail(email: string, orderId: string) {
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const orderUrl = `${baseUrl}/orders/${orderId}`;
+
+    const emailContent = {
+      from: process.env.EMAIL_FROM || 'noreply@globlinksolution.com',
+      to: email,
+      subject: 'Payment Received - eSIM Order Processing',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Payment Received Successfully</h2>
+          <p>Thank you for your payment. We have received your order and are processing your eSIM.</p>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p><strong>Order ID:</strong> ${orderId}</p>
+            <p><strong>Status:</strong> Processing</p>
+          </div>
+
+          <p>We will send you another email with your eSIM details once it's ready for activation.</p>
+          
+          <p>You can check your order status here:</p>
+          <a href="${orderUrl}" style="display: inline-block; background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 20px 0;">
+            View Order Status
+          </a>
+
+          <p>If you have any questions, please contact our support team.</p>
+          
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            This is an automated message. Please do not reply to this email.
+          </p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(emailContent);
+    console.log(`Payment confirmation email sent to ${email} for order ${orderId}`);
+  } catch (error) {
+    console.error('Error sending payment confirmation email:', error);
+    throw error;
+  }
 } 

@@ -15,7 +15,7 @@ import {
   CardContent
 } from '@mui/material';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Order } from '@/types/order';
@@ -24,21 +24,16 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { formatDataSize, formatDate, formatCurrency } from '@/lib/utils';
 
-interface OrderDetailsPageProps {
-  params: {
-    orderNo: string;
-  };
-}
-// this page is served after payment to show esim order details
-export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
-  const orderNo = params.orderNo;
-  const { data: session, status } = useSession();
+export default function OrderDetails() {
+  const { orderNo } = useParams();
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
   const [packageDetails, setPackageDetails] = useState<ProcessedPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
   // Get payment status from URL
   useEffect(() => {
@@ -68,6 +63,79 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       fetchOrderDetails();
     }
   }, [session?.user, orderNo, paymentStatus]);
+
+  useEffect(() => {
+    const processAndCheckStatus = async () => {
+      try {
+        // 1. First, trigger the order processing
+        const processResponse = await fetch(`/api/process-order/${orderNo}`, {
+          method: 'POST'
+        });
+        
+        if (!processResponse.ok) {
+          throw new Error('Failed to start order processing');
+        }
+
+        // 2. Then start polling for status
+        const checkStatus = async () => {
+          try {
+            const response = await fetch(`/api/process-order/${orderNo}`);
+            const data = await response.json();
+
+            if (data.status === 'GOT_RESOURCE') {
+              setPaymentStatus('completed');
+              setOrder(data.order);
+              setPackageDetails(data.packageDetails);
+              // Clear the polling interval
+              if (pollingInterval) {
+                clearInterval(pollingInterval);
+                setPollingInterval(null);
+              }
+              // Show success for 3 seconds before redirecting
+              setTimeout(() => {
+                router.push(`/orders/${data.order.orderNo}`);
+              }, 3000);
+            } else if (data.status === 'FAILED') {
+              setPaymentStatus('failed');
+              setError(data.error);
+              // Clear the polling interval on failure
+              if (pollingInterval) {
+                clearInterval(pollingInterval);
+                setPollingInterval(null);
+              }
+            }
+          } catch (error) {
+            console.error('Error checking status:', error);
+          }
+        };
+
+        // Check status every 5 seconds
+        const interval = setInterval(checkStatus, 5000);
+        setPollingInterval(interval);
+
+        // Cleanup function
+        return () => {
+          if (interval) {
+            clearInterval(interval);
+          }
+        };
+      } catch (error) {
+        setPaymentStatus('failed');
+        setError('Failed to process order');
+      }
+    };
+
+    processAndCheckStatus();
+  }, [orderNo, router]);
+
+  // Cleanup polling interval on component unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   const fetchOrderDetails = async () => {
     try {
