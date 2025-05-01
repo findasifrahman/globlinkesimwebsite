@@ -1,21 +1,27 @@
 export interface Order {
+  id: string;
   orderNo: string;
   status: string;
-  package_code: string;
-  packageCode?: string;
-  qrCode?: string;
-  iccid?: string;
-  smdpStatus?: string;
-  esimStatus?: string;
-  dataRemaining?: number;
+  createdAt: string;
+  updatedAt: string;
+  packageId: string;
+  userId: string;
+  paymentOrderNo?: string;
+  paymentState?: string;
+  finalAmountPaid?: number;
+  paidAmount?: number | string;
+  transactionId?: string;
+  currency?: string;
+  pmName?: string;
+  discountCode?: string;
+  discountPercentage?: number;
   dataUsed?: number;
-  expiryDate?: string;
+  dataRemaining?: number;
   daysRemaining?: number;
-  createdAt?: string;
-  profile?: {
-    packageCode: string;
-    count: number;
-    price: number;
-    periodNum: number;
-  };
+  expiryDate?: string;
+  iccid?: string;
+  eid?: string;
+  qrCode?: string;
+  esimStatus?: string;
+  smdpStatus?: string;
 } 

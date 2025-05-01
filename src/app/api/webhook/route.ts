@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateHmacSignature } from '@/lib/utils';
-import { sendEmail } from '@/lib/email';
+import { sendEmail, sendEsimEmail } from '@/lib/email';
 import { processWebhookEvent, WebhookPayload } from '@/lib/webhook';
 
 // Define webhook payload types
@@ -50,19 +50,77 @@ async function queryEsimProfile(orderNo: string) {
  * This route is deprecated. All webhook requests should be sent to the external webhook service.
  * See .env.local for the WEBHOOK_URL configuration.
  */
-export async function POST(request: Request) {
-  console.log('==================================================');
-  console.log('[Webhook] DEPRECATED: This webhook endpoint is deprecated.');
-  console.log('[Webhook] All webhook requests should be sent to the external webhook service.');
-  console.log('[Webhook] See .env.local for the WEBHOOK_URL configuration.');
-  console.log('==================================================');
-  
-  return NextResponse.json(
-    { 
-      error: 'This webhook endpoint is deprecated',
-      message: 'All webhook requests should be sent to the external webhook service',
-      correctEndpoint: process.env.WEBHOOK_URL || 'https://globlinkesimwebhook-production.up.railway.app/globlinkesimwebhook'
-    },
-    { status: 410 } // 410 Gone
-  );
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { orderNo, status, qrCode } = body;
+
+    if (!orderNo || !status) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Find the order
+    const order = await prisma.esimOrderAfterPayment.findFirst({
+      where: { orderNo },
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update order status
+    await prisma.esimOrderAfterPayment.update({
+      where: { id: order.id },
+      data: { status },
+    });
+
+    // If order is complete and has QR code, send email and update esimProfile
+    if (status === 'COMPLETED' && qrCode) {
+      // Create or update esimProfile
+      await prisma.esimProfile.upsert({
+        where: { orderId: order.id },
+        update: { qrCode },
+        create: {
+          orderId: order.id,
+          qrCode,
+          status: 'ACTIVE',
+        },
+      });
+
+      // Send email to user
+      if (order.user?.email) {
+        await sendEsimEmail(
+          order.user.email,
+          orderNo,
+          {
+            qrCode,
+            packageCode: order.packageCode,
+            amount: order.amount,
+            currency: order.currency,
+          }
+        );
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    return NextResponse.json(
+      { error: 'Failed to process webhook' },
+      { status: 500 }
+    );
+  }
 } 

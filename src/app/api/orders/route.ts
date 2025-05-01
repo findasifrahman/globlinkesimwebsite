@@ -24,6 +24,7 @@ function generateHmacSignature(timestamp: string, requestId: string, accessCode:
 }
 
 // POST endpoint for creating new orders
+/*
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
     );
 
     // Create order in our database first
-    const orderProfile = await prisma.orderProfile.create({
+    const orderProfile = await prisma.esimOrderBeforePayment.create({
       data: {
         id: transactionId,
         userId: session.user.id,
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const order = await prisma.order.create({
+    const order = await prisma.esimOrderBeforePayment.create({
       data: {
         orderNo: transactionId,
         userId: session.user.id,
@@ -157,7 +158,7 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+}*/
 
 // GET endpoint for fetching orders
 export async function GET(request: Request) {
@@ -168,7 +169,7 @@ export async function GET(request: Request) {
     }
 
     // Fetch orders for the authenticated user
-    const orders = await prisma.order.findMany({
+    const orders = await prisma.esimOrderAfterPayment.findMany({
       where: {
         userId: session.user.id,
       },
@@ -194,7 +195,7 @@ export async function GET(request: Request) {
       },
     });
 
-    console.log('Fetched orders:', orders);
+    //console.log('Fetched orders:', orders);
     return NextResponse.json({ orders });
   } catch (error) {
     console.error('Error fetching orders:', error);

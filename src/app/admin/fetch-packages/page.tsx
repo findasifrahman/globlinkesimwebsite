@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Box, Paper, Typography, Button, CircularProgress, Alert } from '@mui/material';
+import { CloudDownload as FetchIcon } from '@mui/icons-material';
 
 export default function FetchPackagesPage() {
   const [loading, setLoading] = useState(false);
@@ -34,38 +36,50 @@ export default function FetchPackagesPage() {
   };
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <h1 className="text-2xl font-bold mb-2">Fetch Packages from API</h1>
-        <p className="text-gray-600 mb-4">
+    <Box>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Fetch Packages
+      </Typography>
+      
+      <Paper elevation={3} sx={{ p: 3, mt: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Fetch Packages from API
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph>
           This will fetch all available packages from the eSIM API and save them to the database.
-        </p>
+        </Typography>
         
-        <button 
-          onClick={fetchPackages} 
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <FetchIcon />}
+          onClick={fetchPackages}
           disabled={loading}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50 mb-4"
+          sx={{ mb: 2 }}
         >
           {loading ? 'Fetching...' : 'Fetch Packages'}
-        </button>
+        </Button>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            <p>{error}</p>
-          </div>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         )}
 
         {result && (
-          <div className={`${result.success ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'} border px-4 py-3 rounded mb-4`}>
-            <p>{result.message}</p>
+          <Alert 
+            severity={result.success ? "success" : "error"} 
+            sx={{ mb: 2 }}
+          >
+            {result.message}
             {result.count !== undefined && (
-              <div className="mt-2">
+              <Typography variant="body2" sx={{ mt: 1 }}>
                 <strong>Packages fetched:</strong> {result.count}
-              </div>
+              </Typography>
             )}
-          </div>
+          </Alert>
         )}
-      </div>
-    </div>
+      </Paper>
+    </Box>
   );
 } 

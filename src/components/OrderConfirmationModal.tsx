@@ -70,13 +70,17 @@ interface OrderConfirmationModalProps {
   onClose: () => void;
   packageDetails: ProcessedPackage;
   quantity: number;
+  discountCode?: string;
+  finalAmountPaid: number;
 }
 
 export default function OrderConfirmationModal({
   open,
   onClose,
   packageDetails,
-  quantity
+  quantity,
+  discountCode,
+  finalAmountPaid
 }: OrderConfirmationModalProps) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -94,7 +98,7 @@ export default function OrderConfirmationModal({
 
     setLoading(true);
     setError(null);
-    setStatus('Initiating payment...');
+    setStatus('Creating order...');
     console.log("initiating payment...")
     try {
       // Generate a unique order ID
@@ -102,6 +106,34 @@ export default function OrderConfirmationModal({
       const newOrderId = `${packageDetails.packageCode}-${timestamp}`;
       console.log("order id created at payment initiation", newOrderId);
       console.log("package details is", packageDetails);
+
+      // Create order before payment
+      const orderResponse = await fetch('/api/esimorderbeforepayment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentOrderNo: newOrderId,
+          packageCode: packageDetails.packageCode,
+          count: quantity,
+          amount: packageDetails.retailPrice,
+          currency: packageDetails.currencyCode,
+          discountCode: discountCode || "none",
+          finalAmountPaid: finalAmountPaid
+        }),
+      });
+
+      const orderData = await orderResponse.json();
+
+      if (!orderResponse.ok) {
+        console.log("order response esimorderbeforepayment is not ok--", orderData);
+        setStatus('Failed to create order. Please contact system administrator.');
+        setLoading(false);
+        return;
+      }
+
+      setStatus('Initiating payment...');
 
       // Create payment with Payssion
       const paymentResponse = await fetch('/api/payment/create', {
@@ -111,7 +143,7 @@ export default function OrderConfirmationModal({
         },
         body: JSON.stringify({
           orderId: newOrderId,
-          amount: (packageDetails.retailPrice * quantity / 10000).toFixed(2), // Convert to actual currency amount
+          amount: finalAmountPaid, //(packageDetails.retailPrice * quantity / 10000).toFixed(2), // Convert to actual currency amount
           currency: packageDetails.currencyCode,
           description: `eSIM Order: ${packageDetails.packageName} (${quantity} units)`
         }),
@@ -120,7 +152,9 @@ export default function OrderConfirmationModal({
       const paymentData = await paymentResponse.json();
 
       if (!paymentResponse.ok) {
-        throw new Error(paymentData.error || 'Failed to create payment');
+        setStatus('Failed to create payment. Please contact system administrator.');
+        setLoading(false);
+        return;
       }
 
       if (paymentData.redirect_url) {
@@ -215,8 +249,13 @@ export default function OrderConfirmationModal({
             border: `1px solid ${theme.palette.error.main}`
           }}
         >
-          <Typography variant="h6"  sx={{ fontWeight: 'bold' }}>
-            Total Amount: {packageDetails.currencyCode} {totalPrice.toFixed(2)}
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            Total Amount: {packageDetails.currencyCode} {finalAmountPaid.toFixed(2)}
+            {discountCode && discountCode !== "none" && (
+              <Typography variant="body2" color="success.main">
+                (Discount code: {discountCode})
+              </Typography>
+            )}
           </Typography>
         </Paper>
 

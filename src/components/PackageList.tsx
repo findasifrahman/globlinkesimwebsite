@@ -236,6 +236,7 @@ export default function PackageList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [regionType, setRegionType] = useState<'single' | 'multi'>('single');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Fetch all packages once when component mounts
   useEffect(() => {
@@ -325,9 +326,15 @@ export default function PackageList() {
         region.toLowerCase().includes(searchQuery)
       );
 
-  const handlePackageClick = (packageCode: string) => {
+  const handlePackageClick = async (packageCode: string) => {
+    setIsNavigating(true);
     setModalOpen(false);
-    router.push(`/package-detail/${packageCode}`);
+    try {
+      await router.push(`/package-detail/${packageCode}`);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setIsNavigating(false);
+    }
   };
 
   const modalStyle = {
@@ -526,23 +533,31 @@ export default function PackageList() {
         onClose={() => setModalOpen(false)}
         aria-labelledby="package-modal-title"
       >
-        <Box sx={{ 
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '95%',
-          maxWidth: '1400px',
-          maxHeight: '90vh',
-          bgcolor: 'background.paper',
-          boxShadow: 24,
-          p: 4,
-          borderRadius: '8px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          overflow: 'hidden'
-        }}>
+        <Box sx={modalStyle}>
+          {isNavigating && (
+            <Box
+              sx={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 9999,
+              }}
+            >
+              <CircularProgress 
+                size={80} 
+                thickness={4}
+                sx={{
+                  color: 'white',
+                }}
+              />
+            </Box>
+          )}
           <Box sx={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -622,10 +637,8 @@ export default function PackageList() {
               background: 'rgba(0,0,0,0.3)',
             }
           }}>
-            <Grid 
-              container 
-              spacing={2} 
-              sx={{ 
+            <Box
+              sx={{
                 width: '100%',
                 display: 'grid',
                 gridTemplateColumns: {
@@ -638,73 +651,61 @@ export default function PackageList() {
               }}
             >
               {filteredPackages.map((pkg) => (
-                <Grid item key={pkg.packageCode} sx={{ width: '100%' }}>
+                <Box key={pkg.packageCode}>
                   <Card
                     onClick={() => handlePackageClick(pkg.packageCode)}
-                    sx={{ 
-                      height: '120px',
+                    sx={{
+                      height: '100%',
                       cursor: 'pointer',
-                      borderRadius: '8px',
-                      backgroundColor: 'white',
-                      border: '2px solid',
-                      borderColor: 'transparent',
-                      boxShadow: '0 4px 0 rgba(0,0,0,0.1)',
-                      transition: 'all 0.2s ease',
+                      backgroundColor: isNavigating ? 'primary.main' : 'white',
+                      color: isNavigating ? 'white' : 'text.primary',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        transform: 'translateY(-4px)',
+                        boxShadow: 3,
+                      },
                       display: 'flex',
                       flexDirection: 'column',
-                      width: '100%',
-                      '&:hover': {
-                        backgroundColor: 'grey.100',
-                        transform: 'translateY(2px)',
-                        boxShadow: '0 2px 0 rgba(0,0,0,0.1)',
-                        borderColor: 'transparent',
-                      },
-                      '&:active': {
-                        transform: 'translateY(4px)',
-                        boxShadow: '0 0 0 rgba(0,0,0,0.1)',
-                      }
+                      justifyContent: 'space-between',
+                      position: 'relative',
+                      overflow: 'hidden',
                     }}
                   >
-                    <CardContent sx={{ 
-                      flexGrow: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 0.5,
-                      p: 2,
-                      width: '100%'
-                    }}>
-                      <Typography 
-                        sx={{ 
-                          fontSize: '1.1rem',
-                          fontWeight: 700,
-                          color: 'primary.main',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          width: '100%'
+                    {isNavigating && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                          zIndex: 1,
                         }}
                       >
-                        {pkg.packageName.length > 28 
-                          ? `${pkg.packageName.substring(0, 28)}...`
-                          : pkg.packageName}
+                        <CircularProgress color="inherit" />
+                      </Box>
+                    )}
+                    <CardContent>
+                      <Typography variant="h6" component="h2" gutterBottom>
+                        {pkg.packageName}
                       </Typography>
-                      <Typography 
-                        sx={{ 
-                          fontSize: '1.2rem',
-                          fontWeight: 700,
-                          color: 'red',
-                          mt: 'auto',
-                          textAlign: 'left',
-                          width: '100%'
-                        }}
-                      >
-                        ${(pkg.retailPrice / 10000).toFixed(2)}
-          </Typography>
+                      <Typography variant="body2" color="inherit">
+                        {pkg.packageCode}
+                      </Typography>
+                      <Typography variant="h6" color="inherit" sx={{ mt: 2 }}>
+                        ${(pkg.retailPrice/10000).toFixed(2)  }
+                      </Typography>
                     </CardContent>
                   </Card>
-                </Grid>
+                </Box>
               ))}
-            </Grid>
+            </Box>
           </Box>
           <Box sx={{ 
             width: '100%', 

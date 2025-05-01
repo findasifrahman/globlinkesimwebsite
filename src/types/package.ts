@@ -16,18 +16,17 @@ export interface Package {
 }
 
 export interface ProcessedPackage {
+  id: string;
   packageName: string;
   packageCode: string;
-  slug: string;
-  price: number;
-  currencyCode: string;
-  smsStatus: boolean;
   duration: number;
+  dataSize: number;
   location: string;
-  activeType: string;
-  retailPrice: number;
   speed: string;
-  multiregion: boolean;
-  favourite?: boolean;
-  operators?: string;
+  price: number;
+  description?: string;
+  features?: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 } 

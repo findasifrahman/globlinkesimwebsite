@@ -6,11 +6,11 @@ import crypto from 'crypto';
  * @param orderNo The order number to query
  * @returns Promise containing the eSIM profile details
  */
-export async function queryEsimProfile(orderNo: string): Promise<EsimProfile> {
-  console.log(`[${new Date().toISOString()}] Querying eSIM profile for order: ${orderNo}`);
+export async function queryEsimProfile(esimOrderNo: string): Promise<EsimProfile | null> {
+  console.log(`[${new Date().toISOString()}] Querying eSIM profile for order: ${esimOrderNo}`);
   
   const requestBody = {
-    orderNo: orderNo,
+    orderNo: esimOrderNo,
     iccid: "",
     pager: {
       pageNum: 1,
@@ -48,14 +48,16 @@ export async function queryEsimProfile(orderNo: string): Promise<EsimProfile> {
   console.log(`[queryEsimProfile] Response status: ${response.status}`);
   
   if (!response.ok) {
-    throw new Error(`Failed to query eSIM profile: ${response.statusText}`);
+    console.error(`Failed to query eSIM profile: ${response.statusText}`);
+    return null;
   }
 
   const data = await response.json();
-  //console.log(`[queryEsimProfile] API response:`, JSON.stringify(data, null, 2));
+  console.log(`[queryEsimProfile] API response:`, JSON.stringify(data, null, 2));
   
   if (!data.success || !data.obj || !data.obj.esimList || data.obj.esimList.length === 0) {
-    throw new Error('No eSIM profile data found');
+    console.log(`No eSIM profile found for order ${esimOrderNo}`);
+    return null;
   }
 
   const profile = data.obj.esimList[0];
@@ -95,10 +97,12 @@ function generateHmacSignature(body: string, secretKey: string): string {
  */
 export async function pollForOrderStatus(
   orderNo: string,
-  maxAttempts: number = 30,
-  intervalMs: number = 2000
-): Promise<boolean> {
-  console.log(`[pollForOrderStatus] Starting to poll for order: ${orderNo}`);
+  paymentOrderNo: string,
+  transactionId: string,
+  maxAttempts: number = 12,
+  intervalMs: number = 5000
+): Promise<{ webhook_esimProfile: any }>  {
+  console.log(`[pollForOrderStatus] Starting to poll for payment order in webhook table: ${orderNo}`);
   
   const webhookUrl = process.env.WEBHOOK_URL;
   if (!webhookUrl) {
@@ -121,10 +125,10 @@ export async function pollForOrderStatus(
       }
 
       const responseText = await response.text();
-      console.log(`[pollForOrderStatus] Raw response: ${responseText}`);
+      //console.log(`[pollForOrderStatus] Raw response: ${responseText}`);
       
       const data = JSON.parse(responseText);
-      console.log(`[pollForOrderStatus] Parsed response:`, JSON.stringify(data, null, 2));
+      //console.log(`[pollForOrderStatus] Parsed response:`, JSON.stringify(data, null, 2));
 
       // Check if the response has the expected structure
       if (!data.events || !Array.isArray(data.events)) {
@@ -136,16 +140,17 @@ export async function pollForOrderStatus(
       console.log(`[pollForOrderStatus] Retrieved ${data.events.length} events`);
 
       // Look for GOT_RESOURCE status in the events
+      // transactionId is same for both esim and paymentn so we can use it to find the event
       const gotResourceEvent = data.events.find((event: any) => 
         event.notifyType === 'ORDER_STATUS' && 
-        event.content?.orderNo === orderNo && 
+        event.content?.transactionId === transactionId && 
         event.content?.orderStatus === 'GOT_RESOURCE'
       );
 
       if (gotResourceEvent) {
-        console.log(`[pollForOrderStatus] Found GOT_RESOURCE status for order: ${orderNo}`);
+        console.log(`[pollForOrderStatus] Found GOT_RESOURCE status for order: ${orderNo} and transactionId: ${transactionId}`);
         console.log(`[pollForOrderStatus] Event details:`, JSON.stringify(gotResourceEvent, null, 2));
-        return true;
+        return { webhook_esimProfile: gotResourceEvent };
       }
 
       console.log(`[pollForOrderStatus] No matching event found for order: ${orderNo}`);
@@ -159,7 +164,7 @@ export async function pollForOrderStatus(
   }
 
   console.log(`[pollForOrderStatus] No GOT_RESOURCE status found after ${maxAttempts} attempts`);
-  return false;
+  return { webhook_esimProfile: null };
 }
 
 /**

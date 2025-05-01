@@ -49,7 +49,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
     }
 
     
-    console.log('Fetching package details for order:', order.orderNo, 'with package_code:', order.package_code);
+    //console.log('Fetching package details for order:', order.orderNo, 'with package_code:', order.package_code);
     
     try {
       // First try to get from localStorage

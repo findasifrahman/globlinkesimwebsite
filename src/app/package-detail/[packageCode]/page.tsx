@@ -23,6 +23,7 @@ import {
   Avatar,
   useTheme,
   alpha,
+  TextField,
 } from '@mui/material';
 import { 
   Public, 
@@ -247,6 +248,9 @@ export default function PackageDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const { data: session, status } = useSession();
   const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [discountError, setDiscountError] = useState<string | null>(null);
 
   useEffect(() => {
     // Try to get package data from localStorage first
@@ -330,10 +334,10 @@ export default function PackageDetailPage() {
     }
   }, [packageCode]);
 
-  const handleQuantityChange = (change: number) => {
+  /*const handleQuantityChange = (change: number) => {
     const newQuantity = Math.max(1, quantity + change);
     setQuantity(newQuantity);
-  };
+  };*/
 
   const handleAddToCart = () => {
     if (status === 'unauthenticated') {
@@ -376,6 +380,62 @@ export default function PackageDetailPage() {
 
   const handlePackageClick = (code: string) => {
     router.push(`/package-detail/${code}`);
+  };
+
+  const handleDiscountCodeChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const code = event.target.value;
+    setDiscountCode(code);
+    setDiscountError(null);
+    setDiscountPercentage(0);
+
+    if (!code.trim()) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/discountCode');
+      if (!response.ok) {
+        throw new Error('Failed to validate discount code');
+      }
+      
+      const discountCodes = await response.json();
+      
+      if (!Array.isArray(discountCodes)) {
+        throw new Error('Invalid response from server');
+      }
+
+      const validCode = discountCodes.find(dc => dc.discountCode === code);
+      
+      if (validCode) {
+        // Check if the discount code is expired
+        const now = new Date();
+        const expireDate = new Date(validCode.expireDate);
+        
+        if (now > expireDate) {
+          setDiscountError('This discount code has expired');
+          setDiscountPercentage(0);
+        } else {
+          setDiscountPercentage(validCode.discountPercentage);
+          setDiscountError(null);
+        }
+      } else {
+        setDiscountError('Invalid discount code');
+        setDiscountPercentage(0);
+      }
+    } catch (error) {
+      console.error('Error validating discount code:', error);
+      setDiscountError('Unable to validate discount code. Please try again.');
+      setDiscountPercentage(0);
+    }
+  };
+
+  const calculateDiscountedPrice = () => {
+    if (!packageData) return 0;
+    const basePrice = (packageData.retailPrice / 10000) * quantity;
+    if (discountPercentage > 0) {
+      return basePrice * (1 - discountPercentage / 100);
+    }
+    return basePrice;
   };
 
   if (loading) {
@@ -650,22 +710,34 @@ export default function PackageDetailPage() {
                   <Button 
                     variant="outlined" 
                     size="small" 
-                    onClick={() => handleQuantityChange(-1)}
+                    disabled
                     sx={{ minWidth: 40 }}
                   >
                     -
                   </Button>
                   <Typography variant="body1" sx={{ mx: 2, minWidth: 30, textAlign: 'center', fontWeight: 'bold' }}>
-                    {quantity}
+                    1
                   </Typography>
                   <Button 
                     variant="outlined" 
                     size="small" 
-                    onClick={() => handleQuantityChange(1)}
+                    disabled
                     sx={{ minWidth: 40 }}
                   >
                     +
                   </Button>
+                </Box>
+                
+                <Box sx={{ mb: 3 }}>
+                  <TextField
+                    fullWidth
+                    label="Discount Code"
+                    value={discountCode}
+                    onChange={handleDiscountCodeChange}
+                    error={!!discountError}
+                    helperText={discountError || (discountPercentage > 0 ? `${discountPercentage}% discount applied` : '')}
+                    sx={{ mb: 2 }}
+                  />
                 </Box>
                 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -695,7 +767,12 @@ export default function PackageDetailPage() {
                   }}
                 >
                   <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
-                    Total: {packageData.currencyCode} {((packageData.retailPrice / 10000) * quantity).toFixed(2)}
+                    Total: {packageData.currencyCode} {calculateDiscountedPrice().toFixed(2)}
+                    {discountPercentage > 0 && (
+                      <Typography variant="body2" color="success.main">
+                        (Original: {packageData.currencyCode} {((packageData.retailPrice / 10000) * quantity).toFixed(2)})
+                      </Typography>
+                    )}
                   </Typography>
                 </Box>
               </Paper>
@@ -821,24 +898,36 @@ export default function PackageDetailPage() {
                 <Button 
                   variant="outlined" 
                   size="small" 
-                  onClick={() => handleQuantityChange(-1)}
+                  disabled
                   sx={{ minWidth: 40 }}
                 >
                   -
                 </Button>
                 <Typography variant="body1" sx={{ mx: 2, minWidth: 30, textAlign: 'center', fontWeight: 'bold' }}>
-                  {quantity}
+                  1
                 </Typography>
                 <Button 
                   variant="outlined" 
                   size="small" 
-                  onClick={() => handleQuantityChange(1)}
+                  disabled
                   sx={{ minWidth: 40 }}
                 >
                   +
                 </Button>
               </Box>
               
+              <Box sx={{ mb: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Discount Code"
+                  value={discountCode}
+                  onChange={handleDiscountCodeChange}
+                  error={!!discountError}
+                  helperText={discountError || (discountPercentage > 0 ? `${discountPercentage}% discount applied` : '')}
+                  sx={{ mb: 2 }}
+                />
+              </Box>
+
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Button 
                   variant="contained" 
@@ -866,7 +955,12 @@ export default function PackageDetailPage() {
                 }}
               >
                 <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
-                  Total: {packageData.currencyCode} {((packageData.retailPrice / 10000) * quantity).toFixed(2)}
+                  Total: {packageData.currencyCode} {calculateDiscountedPrice().toFixed(2)}
+                  {discountPercentage > 0 && (
+                    <Typography variant="body2" color="success.main">
+                      (Original: {packageData.currencyCode} {((packageData.retailPrice / 10000) * quantity).toFixed(2)})
+                    </Typography>
+                  )}
                 </Typography>
               </Box>
             </Paper>
@@ -884,6 +978,8 @@ export default function PackageDetailPage() {
           onClose={() => setOrderModalOpen(false)}
           packageDetails={packageData}
           quantity={quantity}
+          discountCode={discountCode}
+          finalAmountPaid={calculateDiscountedPrice()}
         />
       )}
     </>

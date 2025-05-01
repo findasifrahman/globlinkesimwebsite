@@ -14,8 +14,8 @@ import { sendEsimEmail } from '@/lib/email';
  */
 async function pollOrderStatus(
   orderNo: string,
-  maxAttempts: number = 30,
-  intervalMs: number = 2000
+  maxAttempts: number = 12,
+  intervalMs: number = 5000
 ): Promise<boolean> {
   console.log(`[pollOrderStatus] Starting to poll for order: ${orderNo}`);
   
@@ -97,23 +97,22 @@ async function processOrderAfterGotResource(orderNo: string): Promise<void> {
   try {
     // First, update the order_profiles table status to GOT_RESOURCE
     console.log(`[processOrderAfterGotResource] Updating order_profiles status to GOT_RESOURCE`);
-    
-    // Update the order status in the order_profiles table
-    await prisma.orderProfile.update({
+
+    //also update the esimOrderBeforePayment table
+    await prisma.esimOrderBeforePayment.update({
       where: { orderNo },
       data: {
         status: 'GOT_RESOURCE',
         updatedAt: new Date()
       }
     });
-    
     // Now query the eSIM profile directly
     console.log(`[processOrderAfterGotResource] Querying eSIM profile for order: ${orderNo}`);
     const esimProfile = await queryEsimProfile(orderNo);
     console.log(`[processOrderAfterGotResource] Retrieved eSIM profile:`, esimProfile);
     
     // Get the order profile to find the user
-    const orderProfile = await prisma.orderProfile.findUnique({
+    const orderProfile = await prisma.esimOrderBeforePayment.findUnique({
       where: { orderNo },
       include: { user: true }
     });
@@ -123,7 +122,7 @@ async function processOrderAfterGotResource(orderNo: string): Promise<void> {
     }
     
     // Update the order in the database with the eSIM profile details
-    const updatedOrder = await prisma.order.update({
+    const updatedOrder = await prisma.esimOrderAfterPayment.update({
       where: { orderNo },
       data: {
         status: 'GOT_RESOURCE',

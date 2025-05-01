@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { md5sum } from '@/utils/hash';
 
-const PAYSSION_API_URL = 'https://sandbox.payssion.com/api/v1/payment/create';
+const PAYSSION_API_URL = process.env.PAYSSION_CREATE_PAYMENT;
 const PAYSSION_API_KEY = process.env.PAYSSION_API_KEY;
 const PAYSSION_SECRET_KEY = process.env.PAYSSION_SECRET_KEY;
 const PAYSSION_RETURN_URL = process.env.PAYSSION_RETURN_GLOBLINK_URL;
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     }
 
     // Create payment webhook state record
-   await prisma.paymentWebhookState.create({
+   /*await prisma.paymentWebhookState.create({
       data: {
         orderId,
         status: 'pending',
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
         currency,
         userId: session.user.id,
       },
-    });
+    });*/
 
     return NextResponse.json(result);
   } catch (error) {

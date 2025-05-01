@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderNo, status, dataRemaining, dataUsed, smdpStatus, qrCode } = body;
+    const { orderNo, status, dataRemaining, dataUsed, smdpStatus, qrCode, daysRemaining } = body;
 
     // Validate required fields
     if (!orderNo) {
@@ -15,13 +15,14 @@ export async function POST(request: NextRequest) {
     }
     console.log('got request to update order---:', orderNo, status, dataRemaining, dataUsed, smdpStatus, qrCode);
     // Update the order in the database
-    const updatedOrder = await prisma.order.update({
+    const updatedOrder = await prisma.esimOrderAfterPayment.update({
       where: { orderNo },
       data: {
         status: status !== undefined ? status : undefined,
         dataRemaining: dataRemaining !== undefined ? dataRemaining : undefined,
         dataUsed: dataUsed !== undefined ? dataUsed : undefined,
         smdpStatus: smdpStatus !== undefined ? smdpStatus : undefined,
+        daysRemaining: daysRemaining !== undefined ? daysRemaining : undefined,
         qrCode: qrCode !== undefined ? qrCode : undefined,
       },
     });

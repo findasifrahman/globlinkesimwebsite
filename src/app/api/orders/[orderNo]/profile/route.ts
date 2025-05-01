@@ -17,7 +17,7 @@ export async function GET(
     const { orderNo } = params;
     console.log("orderNo reciew from url---",orderNo);  //
     // Get the order and verify ownership
-    const order = await prisma.order.findFirst({
+    const order = await prisma.esimOrderAfterPayment.findFirst({
       where: {
         orderNo,
         userId: session.user.id,
@@ -35,12 +35,14 @@ export async function GET(
     const esimProfile = await queryEsimProfile(orderNo);
     
     console.log("esimProfile---",esimProfile);
+    
+    // If no profile is found, return the existing order data
     if (!esimProfile) {
-      return NextResponse.json({ error: 'Failed to fetch eSIM profile' }, { status: 500 });
+      return NextResponse.json(order);
     }
 
     // Update the order with the latest eSIM profile information
-    const updatedOrder = await prisma.order.update({
+    const updatedOrder = await prisma.esimOrderAfterPayment.update({
       where: { id: order.id },
       data: {
         qrCode: esimProfile.qrCode,

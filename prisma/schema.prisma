@@ -79,8 +79,8 @@ model AllPackage {
   operators    String         @default("")
   createdAt    DateTime       @default(now()) @map("created_at")
   updatedAt    DateTime       @updatedAt @map("updated_at")
-  orders       OrderProfile[]
-  orderRecords Order[]
+  orders       esimOrderBeforePayment[]
+  orderRecords esimOrderAfterPayment[]
 
   @@index([packageCode])
   @@index([slug])
@@ -107,8 +107,8 @@ model User {
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt @map("updated_at")
   lastLogin              DateTime?               @map("last_login")
-  orders                 OrderProfile[]
-  orderRecords           Order[]
+  orders                 esimOrderBeforePayment[]
+  orderRecords           esimOrderAfterPayment[]
   emailVerificationTokens EmailVerificationToken[]
 
   @@index([username])
@@ -116,19 +116,26 @@ model User {
   @@map("users")
 }
 
-model OrderProfile {
-  id            String     @id @default(uuid()) @map("transaction_id")
+model esimOrderBeforePayment {
+  id            String     @id @default(uuid())
   userId        String     @map("user_id")
   packageCode   String     @map("package_code")
   count         Int
-  price         Float
+  amount        Float      @map("price")
   periodNum     Int        @map("period_num")
-  orderNo       String     @unique @map("order_no")
+  orderNo       String     @unique @map("order_id")
+  paymentOrderNo String?   @unique @map("payment_order_no")
+  discountCode  String?    @map("discount_code")
+  finalAmountPaid Float?   @map("final_amount_paid")
   status        String     @default("PENDING")
+  paymentState  String     @default("pending")
+  currency      String
+  transactionId String     @map("transaction_id")
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
   package       AllPackage @relation(fields: [packageCode], references: [packageCode])
   user          User       @relation(fields: [userId], references: [id])
+  discount      EsimDiscount? @relation(fields: [discountCode], references: [discountCode])
   dataUsageLogs DataUsageLog[]
   validityUsageLogs ValidityUsageLog[]
   esimStatusLogs EsimStatusLog[]
@@ -138,7 +145,7 @@ model OrderProfile {
   @@index([orderNo])
   @@index([status])
   @@unique([orderNo, id])
-  @@map("order_profiles")
+  @@map("esim_order_before_payment")
 }
 
 model DataUsageLog {
@@ -147,7 +154,7 @@ model DataUsageLog {
   transactionId String       @map("transaction_id")
   usageData     String       @map("usage_data")
   createdAt     DateTime     @default(now()) @map("created_at")
-  order         OrderProfile @relation(fields: [orderNo, transactionId], references: [orderNo, id])
+  order         esimOrderBeforePayment @relation(fields: [orderNo, transactionId], references: [orderNo, id])
 
   @@index([orderNo])
   @@map("data_usage_logs")
@@ -159,7 +166,7 @@ model ValidityUsageLog {
   transactionId String       @map("transaction_id")
   usageData     String       @map("usage_data")
   createdAt     DateTime     @default(now()) @map("created_at")
-  order         OrderProfile @relation(fields: [orderNo, transactionId], references: [orderNo, id])
+  order         esimOrderBeforePayment @relation(fields: [orderNo, transactionId], references: [orderNo, id])
 
   @@index([orderNo])
   @@map("validity_usage_logs")
@@ -171,7 +178,7 @@ model EsimStatusLog {
   transactionId String       @map("transaction_id")
   statusData    String       @map("status_data")
   createdAt     DateTime     @default(now()) @map("created_at")
-  order         OrderProfile @relation(fields: [orderNo, transactionId], references: [orderNo, id])
+  order         esimOrderBeforePayment @relation(fields: [orderNo, transactionId], references: [orderNo, id])
 
   @@index([orderNo])
   @@map("esim_status_logs")
@@ -187,9 +194,12 @@ model WebhookEvent {
   createdAt     DateTime @default(now())
 }
 
-model Order {
+model esimOrderAfterPayment {
   id            String   @id @default(cuid())
-  orderNo       String   @unique
+  orderNo       String   @unique @map("order_id")
+  paymentOrderNo String? @unique @map("payment_order_no")
+  discountCode  String?  @map("discount_code")
+  finalAmountPaid Float? @map("final_amount_paid")
   userId        String   @map("user_id")
   user          User     @relation(fields: [userId], references: [id])
   packageCode   String   @map("package_code")
@@ -203,10 +213,46 @@ model Order {
   daysRemaining Int?
   qrCode        String?  // Base64 encoded QR code
   iccid         String?  // ICCID of the eSIM
+  paymentState  String   @default("pending")
+  paidAmount    Decimal  @db.Decimal(10, 2)
+  transactionId String
+  currency      String
+  pmId          String   @map("pm_id")
+  pmName        String   @map("pm_name")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  esimProfile   EsimProfile?
 
-  @@map("orders")
+  @@map("esim_order_after_payment")
+}
+
+model EsimProfile {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  qrCode    String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order     esimOrderAfterPayment @relation(fields: [orderId], references: [id])
+
+  @@map("esim_profiles")
+}
+
+model EsimDiscount {
+  id                String   @id @default(cuid())
+  refererId         String   @map("referer_id")
+  refererName       String   @unique @map("referer_name")
+  discountCode      String   @unique
+  discountPercentage Float   @map("discount_percentage")
+  isActive          Boolean  @default(true) @map("is_active")
+  expireDate        DateTime @map("expire_date")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  orders            esimOrderBeforePayment[]
+
+  @@index([refererId])
+  @@index([discountCode])
+  @@map("esim_discounts")
 }
 
 model PaymentWebhookState {

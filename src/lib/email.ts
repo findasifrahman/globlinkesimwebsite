@@ -109,53 +109,83 @@ interface EsimProfile {
   dataUsed: number;
   expiryDate: string;
   daysRemaining: number;
+  packageCode: string;
+  amount: number;
+  currency: string;
+  discountCode?: string;
+  discountPercentage?: number;
 }
 
-export async function sendEsimEmail(email: string, orderNo: string, profile: EsimProfile) {
-  const dataUsedMB = Math.round(profile.dataUsed / (1024 * 1024));
-  const dataRemainingMB = Math.round(profile.dataRemaining / (1024 * 1024));
-  
+export async function sendEsimEmail(
+  to: string,
+  orderNo: string,
+  esimProfile: EsimProfile
+) {
   const mailOptions = {
-    from: config.email.from,
-    to: email,
-    subject: `Your eSIM is Ready - Order ${orderNo}`,
+    from: 'eSIM <esim@yourdomain.com>',
+    to: [to],
+    subject: 'Your eSIM is Ready!',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Your eSIM is Ready!</h2>
-        <p>Thank you for your order. Your eSIM is now ready to use.</p>
+        <h1 style="color: #2563eb;">Your eSIM is Ready!</h1>
         
-        <div style="margin: 20px 0; text-align: center;">
-          <img src="${profile.qrCode}" alt="eSIM QR Code" style="max-width: 200px;"/>
-          <p style="color: #666; font-size: 14px;">Scan this QR code with your device to install the eSIM</p>
-        </div>
-
-        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px;">
-          <h3 style="margin-top: 0;">eSIM Details</h3>
+        <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h2 style="color: #1f2937;">Order Details</h2>
           <p><strong>Order Number:</strong> ${orderNo}</p>
-          <p><strong>ICCID:</strong> ${profile.iccid}</p>
-          <p><strong>EID:</strong> ${profile.eid || 'N/A'}</p>
-          <p><strong>SM-DP+ Status:</strong> ${profile.smdpStatus}</p>
-          <p><strong>eSIM Status:</strong> ${profile.esimStatus}</p>
-          <p><strong>Data Used:</strong> ${dataUsedMB} MB</p>
-          <p><strong>Data Remaining:</strong> ${dataRemainingMB} MB</p>
-          <p><strong>Expiry Date:</strong> ${new Date(profile.expiryDate).toLocaleDateString()}</p>
-          <p><strong>Days Remaining:</strong> ${profile.daysRemaining}</p>
+          <p><strong>Package:</strong> ${esimProfile.packageCode}</p>
+          <p><strong>Amount:</strong> ${esimProfile.amount} ${esimProfile.currency}</p>
+          ${esimProfile.discountCode ? `
+            <p><strong>Discount Code:</strong> ${esimProfile.discountCode}</p>
+            <p><strong>Discount Applied:</strong> ${esimProfile.discountPercentage}%</p>
+            <p><strong>Original Amount:</strong> ${(esimProfile.amount / (1 - esimProfile.discountPercentage / 100)).toFixed(2)} ${esimProfile.currency}</p>
+          ` : ''}
         </div>
 
-        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-          <p style="color: #666; font-size: 14px;">
-            If you have any questions, please contact our support team.
+        <div style="text-align: center; margin: 20px 0;">
+          <h2 style="color: #1f2937;">Your eSIM QR Code</h2>
+          <img 
+            src="data:image/png;base64,${esimProfile.qrCode}" 
+            alt="eSIM QR Code" 
+            style="max-width: 300px; margin: 20px auto;"
+          />
+          <p style="color: #6b7280; margin-top: 10px;">
+            If the QR code image is not visible, you can scan this code directly:<br>
+            <strong style="word-break: break-all;">${esimProfile.qrCode}</strong>
           </p>
         </div>
+
+        <div style="background-color: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h2 style="color: #1f2937;">How to Install Your eSIM</h2>
+          <ol style="margin-left: 20px;">
+            <li>Open your device's camera and scan the QR code</li>
+            <li>Follow the on-screen instructions to add the eSIM</li>
+            <li>Once installed, go to Settings > Cellular/Mobile Data to activate your eSIM</li>
+            <li>Select your new eSIM as the primary line or for data</li>
+          </ol>
+        </div>
+
+        <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h2 style="color: #1f2937;">eSIM Details</h2>
+          <p><strong>ICCID:</strong> ${esimProfile.iccid}</p>
+          <p><strong>EID:</strong> ${esimProfile.eid}</p>
+          <p><strong>Status:</strong> ${esimProfile.esimStatus}</p>
+          <p><strong>Data Remaining:</strong> ${esimProfile.dataRemaining} MB</p>
+          <p><strong>Data Used:</strong> ${esimProfile.dataUsed} MB</p>
+          <p><strong>Expiry Date:</strong> ${new Date(esimProfile.expiryDate).toLocaleDateString()}</p>
+          <p><strong>Days Remaining:</strong> ${esimProfile.daysRemaining}</p>
+        </div>
+
+        <p style="color: #6b7280; font-size: 14px;">
+          If you have any questions, please contact our support team.
+        </p>
       </div>
     `,
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`eSIM email sent successfully to ${email} for order ${orderNo}`);
   } catch (error) {
-    console.error('Error sending eSIM email:', error);
+    console.error('Failed to send eSIM email:', error);
     throw error;
   }
 }

@@ -23,27 +23,14 @@ export async function GET(
     }
 
     // Fetch the order
-    const order = await prisma.order.findFirst({
+    const order = await prisma.esimOrderAfterPayment.findFirst({
       where: {
         orderNo,
         userId: session.user.id,
       },
-      select: {
-        id: true,
-        orderNo: true,
-        userId: true,
-        packageCode: true,
-        status: true,
-        esimStatus: true,
-        smdpStatus: true,
-        dataRemaining: true,
-        dataUsed: true,
-        expiryDate: true,
-        daysRemaining: true,
-        qrCode: true,
-        iccid: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
+        package: true,
+        esimProfile: true,
       },
     });
 

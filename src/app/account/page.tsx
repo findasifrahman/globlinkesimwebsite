@@ -109,7 +109,7 @@ export default function AccountPage() {
           const updatedDataUsed = profileData.dataUsed;
           const updatedSmdpStatus = profileData.smdpStatus;
           const updatedQrCode = profileData.qrCode;
-          
+          const updatedDaysRemaining = profileData.daysRemaining;
           // Update the database with the new values
           try {
             const updateResponse = await fetch('/api/update-order', {
@@ -123,7 +123,8 @@ export default function AccountPage() {
                 dataRemaining: updatedDataRemaining,
                 dataUsed: updatedDataUsed,
                 smdpStatus: updatedSmdpStatus,
-                qrCode: updatedQrCode
+                qrCode: updatedQrCode,
+                daysRemaining: updatedDaysRemaining
               }),
             });
 

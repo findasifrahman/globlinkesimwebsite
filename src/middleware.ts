@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { NextRequestWithAuth } from 'next-auth/middleware';
+import type { NextRequest } from 'next/server';
 
 // Define paths that don't require authentication
 const publicPaths = [
@@ -23,6 +24,22 @@ interface Token {
 export default async function middleware(request: NextRequestWithAuth) {
   const path = request.nextUrl.pathname;
 
+  // Handle admin routes
+  if (path.startsWith('/admin')) {
+    // Allow access to the login page
+    if (path === '/admin/login') {
+      return NextResponse.next();
+    }
+
+    // Check for admin authentication
+    const adminAuth = request.cookies.get('adminAuth');
+    if (!adminAuth) {
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Handle regular authentication
   // Check if the path is public
   if (publicPaths.some(prefix => path.startsWith(prefix))) {
     return NextResponse.next();
@@ -65,6 +82,7 @@ export default async function middleware(request: NextRequestWithAuth) {
 // Configure which paths should be processed by this middleware
 export const config = {
   matcher: [
+    '/admin/:path*',
     '/dashboard/:path*',
     '/profile/:path*',
     '/verify-email/:path*',

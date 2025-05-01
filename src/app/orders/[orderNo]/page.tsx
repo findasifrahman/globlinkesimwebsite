@@ -29,16 +29,31 @@ interface OrderDetailsPageProps {
     orderNo: string;
   };
 }
-
+// this page is served after payment to show esim order details
 export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   const orderNo = params.orderNo;
   const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [packageDetails, setPackageDetails] = useState<ProcessedPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+
+  // Get payment status from URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const status = urlParams.get('status');
+    if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'rejected') {
+      setPaymentStatus(status);
+      setError('Payment failed. Please try again or contact support if the issue persists.');
+      setLoading(false);
+    } else if (status === 'pending') {
+      setPaymentStatus('pending');
+      setError('Payment is still processing. Please wait or refresh the page.');
+      setLoading(false);
+    }
+  }, []);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -47,12 +62,12 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
     }
   }, [status, router, orderNo]);
 
-  // Fetch order details when component mounts
+  // Fetch order details when component mounts, but only if payment was successful
   useEffect(() => {
-    if (session?.user) {
+    if (session?.user && !paymentStatus) {
       fetchOrderDetails();
     }
-  }, [session, orderNo]);
+  }, [session?.user, orderNo, paymentStatus]);
 
   const fetchOrderDetails = async () => {
     try {
@@ -84,30 +99,22 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
 
   const fetchPackageDetails = async (packageCode: string) => {
     try {
-      const response = await fetch(`/api/packages/${packageCode}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch package details');
+      const storedPackages = localStorage.getItem('packages');
+      if (storedPackages) {
+        const packages = JSON.parse(storedPackages);
+        if (Array.isArray(packages)) {
+          const foundPackage = packages.find(pkg => pkg.packageCode === packageCode);
+          if (foundPackage) {
+            setPackageDetails(foundPackage);
+            setError(null);
+            return true;
+          }
+        }
       }
-      
-      const data = await response.json();
-      setPackageDetails(data.package);
-    } catch (err) {
-      console.error('Error fetching package details:', err);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await fetchOrderDetails();
-    } finally {
-      setRefreshing(false);
+      return false;
+    } catch (e) {
+      console.error('Error parsing stored packages:', e);
+      return false;
     }
   };
 
@@ -136,7 +143,10 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       <>
         <Navbar />
         <Container maxWidth="md" sx={{ py: 8 }}>
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert 
+            severity={paymentStatus === 'failed' || paymentStatus === 'expired' || paymentStatus === 'canceled' ? 'error' : 'warning'} 
+            sx={{ mb: 2 }}
+          >
             {error}
           </Alert>
           <Button 
@@ -200,28 +210,47 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
             <Typography variant="h6" gutterBottom>
               Order Information
             </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Order Number</Typography>
-                <Typography variant="body1" fontWeight="medium">{order.orderNo}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Status</Typography>
-                <Typography variant="body1" fontWeight="medium">{order.status}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Created At</Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {formatDate(order.createdAt)}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Last Updated</Typography>
-                <Typography variant="body1" fontWeight="medium">
-                  {formatDate(order.updatedAt)}
-                </Typography>
-              </Grid>
-            </Grid>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">Order Number</Typography>
+                    <Typography variant="body1" fontWeight="medium">{order.orderNo}</Typography>
+                  </CardContent>
+                </Card>
+              </Box>
+              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">Status</Typography>
+                    <Typography variant="body1" fontWeight="medium">{order.status}</Typography>
+                  </CardContent>
+                </Card>
+              </Box>
+
+              {order.discountCode && (
+                <>
+                  <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" color="text.secondary">Discount Code</Typography>
+                        <Typography variant="body1" fontWeight="medium">{order.discountCode}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Box>
+                  <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" color="text.secondary">Discount Applied</Typography>
+                        <Typography variant="body1" fontWeight="medium" color="success.main">
+                          {order.discountPercentage}%
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Box>
+                </>
+              )}
+            </Box>
           </Box>
           
           <Divider sx={{ my: 3 }} />
@@ -231,28 +260,48 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
               Package Information
             </Typography>
             {packageDetails ? (
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" color="text.secondary">Package Name</Typography>
-                  <Typography variant="body1" fontWeight="medium">{packageDetails.packageName}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">Duration</Typography>
-                  <Typography variant="body1" fontWeight="medium">{packageDetails.duration} days</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">Data Size</Typography>
-                  <Typography variant="body1" fontWeight="medium">{formatDataSize(packageDetails.dataSize)}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">Location</Typography>
-                  <Typography variant="body1" fontWeight="medium">{packageDetails.location}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">Speed</Typography>
-                  <Typography variant="body1" fontWeight="medium">{packageDetails.speed}</Typography>
-                </Grid>
-              </Grid>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Package Name</Typography>
+                      <Typography variant="body1" fontWeight="medium" color="error">{packageDetails.packageName}</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Duration</Typography>
+                      <Typography variant="body1" fontWeight="medium">{packageDetails.duration} days</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Data Size</Typography>
+                      <Typography variant="body1" fontWeight="medium">{formatDataSize(packageDetails.dataSize)}</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Location</Typography>
+                      <Typography variant="body1" fontWeight="medium">{packageDetails.location}</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Speed</Typography>
+                      <Typography variant="body1" fontWeight="medium">{packageDetails.speed}</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
             ) : (
               <Alert severity="info">Package details not available</Alert>
             )}
@@ -262,7 +311,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
           
           <Box sx={{ mb: 4 }}>
             <Typography variant="h6" gutterBottom>
-              eSIM Details
+              eSIM Information
             </Typography>
             
             {isActive && order.qrCode && (
@@ -296,149 +345,79 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
               </Box>
             )}
             
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ 
-                  p: 1.5, 
-                  bgcolor: '#f5f5f5', 
-                  borderRadius: '8px',
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Data Remaining
-                  </Typography>
-                  <Typography 
-                    variant="h6" 
-                    sx={{ 
-                      fontWeight: 'bold',
-                      color: '#d32f2f'
-                    }}
-                  >
-                    {formatDataSize(order.dataRemaining)}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ 
-                  p: 1.5, 
-                  bgcolor: '#f5f5f5', 
-                  borderRadius: '8px',
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Data Used
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {formatDataSize(order.dataUsed)}
-                  </Typography>
-                </Box>
-              </Grid>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">Data Used</Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {formatDataSize(order.dataUsed || 0)}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Box>
+              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">Data Remaining</Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {formatDataSize(order.dataRemaining || 0)}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Box>
               {order.daysRemaining !== undefined && (
-                <Grid item xs={12} sm={6}>
-                  <Box sx={{ 
-                    p: 1.5, 
-                    bgcolor: '#f5f5f5', 
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0'
-                  }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Days Remaining
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                      {order.daysRemaining} days
-                    </Typography>
-                  </Box>
-                </Grid>
+                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">Days Remaining</Typography>
+                      <Typography variant="body1" fontWeight="medium" color="error">{order.daysRemaining} days</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
               )}
               {order.expiryDate && (
-                <Grid item xs={12} sm={6}>
-                  <Box sx={{ 
-                    p: 1.5, 
-                    bgcolor: '#f5f5f5', 
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0'
-                  }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Expiry Date
-                    </Typography>
-                    <Typography 
-                      variant="h6" 
-                      sx={{ 
-                        fontWeight: 'bold',
-                        color: '#d32f2f'
-                      }}
-                    >
-                      {formatDate(order.expiryDate)}
-                    </Typography>
-                  </Box>
-                </Grid>
+                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.primary">Expiry Date</Typography>
+                      <Typography variant="body1" fontWeight="medium" color="error">
+                        {formatDate(order.expiryDate)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
               )}
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ 
-                  p: 1.5, 
-                  bgcolor: '#f5f5f5', 
-                  borderRadius: '8px',
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <Typography variant="body2" color="text.secondary">
-                    eSIM Status
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {order.esimStatus || 'N/A'}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ 
-                  p: 1.5, 
-                  bgcolor: '#f5f5f5', 
-                  borderRadius: '8px',
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <Typography variant="body2" color="text.secondary">
-                    SMDP Status
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {order.smdpStatus || 'N/A'}
-                  </Typography>
-                </Box>
-              </Grid>
+
+              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">Status</Typography>
+                    <Typography variant="body1" fontWeight="medium">{order.status}</Typography>
+                  </CardContent>
+                </Card>
+              </Box>
               {order.iccid && (
-                <Grid item xs={12}>
-                  <Box sx={{ 
-                    p: 1.5, 
-                    bgcolor: '#f5f5f5', 
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0'
-                  }}>
-                    <Typography variant="body2" color="text.secondary">
-                      ICCID
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                      {order.iccid}
-                    </Typography>
-                  </Box>
-                </Grid>
+                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">ICCID</Typography>
+                      <Typography variant="body1" fontWeight="medium">{order.iccid}</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
               )}
-            </Grid>
+            </Box>
           </Box>
           
           <Divider sx={{ my: 3 }} />
           
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
             <Button 
               variant="outlined" 
               onClick={handleBack}
             >
               Back to Account
-            </Button>
-            <Button 
-              variant="contained" 
-              onClick={handleRefresh}
-              startIcon={<RefreshIcon />}
-              disabled={refreshing}
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh Status'}
             </Button>
           </Box>
         </Paper>
