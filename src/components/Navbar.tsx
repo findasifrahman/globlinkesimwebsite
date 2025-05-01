@@ -27,6 +27,7 @@ import {
   Notifications,
   Settings,
   Logout,
+  Home as HomeIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -140,11 +141,15 @@ export default function Navbar() {
             fontWeight: 'bold',
             color: 'white',
             textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
             '&:hover': {
               color: alpha('#fff', 0.8),
             }
           }}
         >
+          <HomeIcon fontSize="small" />
           Globlink
         </Typography>
 

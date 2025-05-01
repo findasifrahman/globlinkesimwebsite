@@ -167,9 +167,8 @@ export async function sendEsimEmail(
         <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h2 style="color: #1f2937;">eSIM Details</h2>
           <p><strong>ICCID:</strong> ${esimProfile.iccid}</p>
-          <p><strong>EID:</strong> ${esimProfile.eid}</p>
           <p><strong>Status:</strong> ${esimProfile.esimStatus}</p>
-          <p><strong>Data Remaining:</strong> ${esimProfile.dataRemaining} MB</p>
+          <p><strong>Data Remaining:</strong> ${esimProfile.dataRemaining/1024/1024} MB</p>
           <p><strong>Data Used:</strong> ${esimProfile.dataUsed} MB</p>
           <p><strong>Expiry Date:</strong> ${new Date(esimProfile.expiryDate).toLocaleDateString()}</p>
           <p><strong>Days Remaining:</strong> ${esimProfile.daysRemaining}</p>

@@ -78,7 +78,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
               location: foundPackage.location,
               speed: foundPackage.speed
             };
-            console.log('Setting package details:', packageDetails);
+            //console.log('Setting package details:', packageDetails);
             setPackageDetails(packageDetails);
             return;
           } else {
@@ -127,7 +127,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
 
   // Only log once when component mounts or order changes
   useEffect(() => {
-    console.log('Order data:', order);
+    //console.log('Order data:', order);
   }, [order.orderNo]); // Only log when order number changes
 
   return (

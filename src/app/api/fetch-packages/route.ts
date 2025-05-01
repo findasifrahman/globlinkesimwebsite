@@ -8,8 +8,6 @@ const SECRET_KEY = process.env.ESIM_SECRET_KEY || '651c41ac694a4638902461297b67b
 
 export async function POST() {
   try {
-
-
     // Generate timestamp for the request
     const timestamp = Math.floor(Date.now() / 1000).toString();
     
@@ -23,7 +21,7 @@ export async function POST() {
       url: API_URL,
       accessCode: ACCESS_CODE,
       timestamp,
-      signature: signature.substring(0, 10) + '...' // Log partial signature for security
+      signature: signature.substring(0, 10) + '...'
     });
     
     // Make request to eSIM API
@@ -37,8 +35,6 @@ export async function POST() {
       },
       body: JSON.stringify({}),
     });
-    
-    console.log('API response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -58,8 +54,6 @@ export async function POST() {
     }
     
     const responseText = await response.text();
-    console.log('API Response text:', responseText.substring(0, 200) + '...'); // Log first 200 chars
-    
     let data;
     try {
       data = JSON.parse(responseText);
@@ -81,12 +75,17 @@ export async function POST() {
     
     console.log(`Processing ${data.obj.packageList.length} packages from API`);
     
+    // Get all existing package codes from database
+    const existingPackages = await prisma.allPackage.findMany({
+      select: {
+        packageCode: true,
+      }
+    });
+    const existingPackageCodes = new Set(existingPackages.map(p => p.packageCode));
+    
     // Process packages from API
     const packages = data.obj.packageList.map((pkg: any) => {
-      // Determine if package is multi-region based on name and location
       const isMultiRegion = isMultiRegionPackage(pkg.name, pkg.location);
-      
-      // Extract operators from locationNetworkList
       const operators = pkg.locationNetworkList 
         ? pkg.locationNetworkList
             .flatMap((location: any) => 
@@ -104,41 +103,154 @@ export async function POST() {
         price: parseFloat(pkg.price),
         currencyCode: pkg.currencyCode,
         smsStatus: pkg.smsStatus === '1',
-        duration: parseInt(pkg.duration || '30'), // Default to 30 days if not specified
+        duration: parseInt(pkg.duration || '30'),
         location: pkg.location || '',
-        activeType: parseInt(pkg.activeType || '1'), // Default to 1 if not specified
-        retailPrice: parseFloat(pkg.retailPrice || pkg.price), // Use price as retail price if not specified
-        speed: pkg.speed || '4G', // Default to 4G if not specified
+        activeType: parseInt(pkg.activeType || '1'),
+        retailPrice: parseFloat(pkg.retailPrice || pkg.price),
+        speed: pkg.speed || '4G',
         multiregion: isMultiRegion,
         favourite: pkg.favorite === true,
         operators: operators,
       };
     });
     
-    // Delete all existing packages
-    console.log('Deleting all existing packages...');
-    await prisma.allPackage.deleteMany({});
-    console.log('All existing packages deleted');
+    // Get package codes from API response
+    const apiPackageCodes = new Set(packages.map(p => p.packageCode));
     
-    // Insert new packages
-    console.log(`Inserting ${packages.length} new packages...`);
-    let insertedCount = 0;
+    // Find packages that exist in DB but not in API
+    const packagesToDelete = Array.from(existingPackageCodes).filter(
+      code => !apiPackageCodes.has(code)
+    );
     
-    for (const pkg of packages) {
+    // Check for packages with orders in a single query
+    let packagesWithOrders: { packageCode: string, orderType: string }[] = [];
+    if (packagesToDelete.length > 0) {
       try {
-        await prisma.allPackage.create({
-          data: pkg,
-        });
-        insertedCount++;
-      } catch (dbError) {
-        console.error(`Error inserting package ${pkg.packageCode}:`, dbError);
+        // Use a single query with EXISTS to check for orders and their types
+        packagesWithOrders = await prisma.$queryRaw`
+          SELECT DISTINCT 
+            p."package_code" as "packageCode",
+            CASE 
+              WHEN EXISTS (SELECT 1 FROM "esim_order_before_payment" o WHERE o."package_code" = p."package_code") THEN 'before_payment'
+              WHEN EXISTS (SELECT 1 FROM "esim_order_after_payment" o WHERE o."package_code" = p."package_code") THEN 'after_payment'
+              ELSE 'none'
+            END as "orderType"
+          FROM "all_packages" p
+          WHERE p."package_code" = ANY(${packagesToDelete})
+          AND (
+            EXISTS (
+              SELECT 1 FROM "esim_order_before_payment" o 
+              WHERE o."package_code" = p."package_code"
+            )
+            OR
+            EXISTS (
+              SELECT 1 FROM "esim_order_after_payment" o 
+              WHERE o."package_code" = p."package_code"
+            )
+          )
+        `;
+      } catch (error) {
+        console.error('Error checking packages with orders:', error);
+        // If we can't check for orders, assume all packages have orders to be safe
+        packagesWithOrders = packagesToDelete.map(code => ({ packageCode: code, orderType: 'unknown' }));
       }
+    }
+    
+    // Create set of packages that can be safely deleted
+    const safeToDelete = new Set(
+      packagesToDelete.filter(
+        code => !packagesWithOrders.some(p => p.packageCode === code)
+      )
+    );
+    
+    // Track packages that can't be deleted due to orders
+    const packagesWithOrdersInfo = packagesWithOrders.map(p => ({
+      packageCode: p.packageCode,
+      orderType: p.orderType,
+      message: `Cannot delete package ${p.packageCode} as it has associated orders in ${p.orderType} table`
+    }));
+    
+    // Delete packages that no longer exist in API and have no orders
+    let deletedCount = 0;
+    if (safeToDelete.size > 0) {
+      console.log(`Attempting to delete ${safeToDelete.size} packages that no longer exist in API`);
+      
+      try {
+        // Use a single delete query for all safe-to-delete packages
+        const result = await prisma.allPackage.deleteMany({
+          where: {
+            packageCode: {
+              in: Array.from(safeToDelete)
+            }
+          }
+        });
+        deletedCount = result.count;
+        console.log(`Successfully deleted ${deletedCount} packages`);
+      } catch (error) {
+        console.error('Failed to delete packages:', error);
+      }
+    }
+    
+    // Log packages that can't be deleted
+    if (packagesWithOrdersInfo.length > 0) {
+      console.log('Packages that cannot be deleted due to associated orders:');
+      packagesWithOrdersInfo.forEach(info => {
+        console.log(`- ${info.packageCode}: ${info.message}`);
+      });
+    }
+    
+    // Update or create packages in batches
+    let updatedCount = 0;
+    let createdCount = 0;
+    const batchSize = 100;
+    
+    for (let i = 0; i < packages.length; i += batchSize) {
+      const batch = packages.slice(i, i + batchSize);
+      const batchResults = await Promise.allSettled(
+        batch.map(async (pkg) => {
+          try {
+            const existingPackage = await prisma.allPackage.findUnique({
+              where: { packageCode: pkg.packageCode }
+            });
+            
+            if (existingPackage) {
+              await prisma.allPackage.update({
+                where: { packageCode: pkg.packageCode },
+                data: pkg
+              });
+              return { type: 'update' as const, success: true };
+            } else {
+              await prisma.allPackage.create({
+                data: pkg
+              });
+              return { type: 'create' as const, success: true };
+            }
+          } catch (error) {
+            console.error(`Error processing package ${pkg.packageCode}:`, error);
+            return { type: 'error' as const, success: false };
+          }
+        })
+      );
+      
+      batchResults.forEach(result => {
+        if (result.status === 'fulfilled') {
+          if (result.value.type === 'update') updatedCount++;
+          if (result.value.type === 'create') createdCount++;
+        }
+      });
+      
+      console.log(`Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(packages.length/batchSize)}`);
     }
     
     return NextResponse.json({
       success: true,
-      message: `Successfully fetched and saved ${insertedCount} packages`,
-      count: insertedCount,
+      message: `Successfully processed packages: ${createdCount} created, ${updatedCount} updated, ${deletedCount} deleted`,
+      count: {
+        created: createdCount,
+        updated: updatedCount,
+        deleted: deletedCount
+      },
+      packagesWithOrders: packagesWithOrdersInfo
     });
   } catch (error) {
     console.error('Error fetching packages:', error);

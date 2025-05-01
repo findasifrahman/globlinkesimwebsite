@@ -1,12 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Box, Paper, Typography, Button, CircularProgress, Alert } from '@mui/material';
+import { Box, Paper, Typography, Button, CircularProgress, Alert, Grid } from '@mui/material';
 import { CloudDownload as FetchIcon } from '@mui/icons-material';
+
+interface PackageCount {
+  created: number;
+  updated: number;
+  deleted: number;
+}
 
 export default function FetchPackagesPage() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string; count?: number } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; message: string; count?: PackageCount } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPackages = async () => {
@@ -46,7 +52,9 @@ export default function FetchPackagesPage() {
           Fetch Packages from API
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
-          This will fetch all available packages from the eSIM API and save them to the database.
+          This will fetch all available packages from the eSIM API and update the database.
+          Existing packages will be updated, new packages will be created, and packages that no longer exist in the API
+          (and have no associated orders) will be deleted.
         </Typography>
         
         <Button
@@ -72,10 +80,24 @@ export default function FetchPackagesPage() {
             sx={{ mb: 2 }}
           >
             {result.message}
-            {result.count !== undefined && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                <strong>Packages fetched:</strong> {result.count}
-              </Typography>
+            {result.count && (
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={4}>
+                  <Typography variant="body2">
+                    <strong>Created:</strong> {result.count.created}
+                  </Typography>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography variant="body2">
+                    <strong>Updated:</strong> {result.count.updated}
+                  </Typography>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography variant="body2">
+                    <strong>Deleted:</strong> {result.count.deleted}
+                  </Typography>
+                </Grid>
+              </Grid>
             )}
           </Alert>
         )}

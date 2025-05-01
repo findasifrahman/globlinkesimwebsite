@@ -226,6 +226,12 @@ const getCountryCode = (countryName: string): string => {
   return countryMap[countryName] || '';
 };
 
+const PACKAGE_DATA_VERSION = '1.0';
+const PACKAGE_DATA_KEY = 'packages';
+const PACKAGE_TIMESTAMP_KEY = 'packages_timestamp';
+const PACKAGE_VERSION_KEY = 'packages_version';
+const CACHE_DURATION = 180 * 60 * 1000; // 18 minutes in milliseconds
+
 export default function PackageList() {
   const router = useRouter();
   const [allPackages, setAllPackages] = useState<Package[]>([]);
@@ -248,9 +254,17 @@ export default function PackageList() {
       setLoading(true);
       setError(null);
       
-      // Check if packages are already in localStorage
-      const storedPackages = localStorage.getItem('packages');
-      if (storedPackages) {
+      // Check if we need to refresh the data
+      const storedTimestamp = localStorage.getItem(PACKAGE_TIMESTAMP_KEY);
+      const storedVersion = localStorage.getItem(PACKAGE_VERSION_KEY);
+      const storedPackages = localStorage.getItem(PACKAGE_DATA_KEY);
+      
+      const shouldRefresh = !storedTimestamp || 
+                          !storedVersion || 
+                          storedVersion !== PACKAGE_DATA_VERSION ||
+                          Date.now() - parseInt(storedTimestamp) > CACHE_DURATION;
+      
+      if (!shouldRefresh && storedPackages) {
         try {
           const parsedPackages = JSON.parse(storedPackages);
           if (Array.isArray(parsedPackages) && parsedPackages.length > 0) {
@@ -260,11 +274,10 @@ export default function PackageList() {
           }
         } catch (e) {
           console.error('Error parsing stored packages:', e);
-          // If parsing fails, continue to fetch from API
         }
       }
       
-      // If not in localStorage or parsing failed, fetch from API
+      // Fetch fresh data from API
       const response = await fetch('/api/packages');
       
       if (!response.ok) {
@@ -277,8 +290,11 @@ export default function PackageList() {
         throw new Error(data.error);
       }
 
-      // Store in localStorage for future use
-      localStorage.setItem('packages', JSON.stringify(data));
+      // Update localStorage with fresh data
+      localStorage.setItem(PACKAGE_DATA_KEY, JSON.stringify(data));
+      localStorage.setItem(PACKAGE_TIMESTAMP_KEY, Date.now().toString());
+      localStorage.setItem(PACKAGE_VERSION_KEY, PACKAGE_DATA_VERSION);
+      console.log('Packages data updated in localStorage');
       
       setAllPackages(data);
     } catch (error) {
@@ -288,6 +304,27 @@ export default function PackageList() {
       setLoading(false);
     }
   };
+
+  // Add a function to force refresh the data
+  const refreshPackages = async () => {
+    // Clear the timestamp to force a refresh
+    localStorage.removeItem(PACKAGE_TIMESTAMP_KEY);
+    await fetchAllPackages();
+  };
+
+  // Add a useEffect to periodically check for updates
+  useEffect(() => {
+    const checkForUpdates = () => {
+      const storedTimestamp = localStorage.getItem(PACKAGE_TIMESTAMP_KEY);
+      if (storedTimestamp && Date.now() - parseInt(storedTimestamp) > CACHE_DURATION) {
+        refreshPackages();
+      }
+    };
+
+    // Check for updates every minute
+    const interval = setInterval(checkForUpdates, 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleRegionTypeChange = (
     _event: React.MouseEvent<HTMLElement>,
