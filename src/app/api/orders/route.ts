@@ -181,6 +181,7 @@ export async function GET(request: Request) {
         orderNo: true,
         userId: true,
         packageCode: true,
+        transactionId: true,
         status: true,
         esimStatus: true,
         smdpStatus: true,

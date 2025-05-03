@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Container, 
   Paper, 
@@ -23,6 +23,7 @@ import { ProcessedPackage } from '@/types/package';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { formatDataSize, formatDate, formatCurrency } from '@/lib/utils';
+import { prisma } from '@/lib/prisma';
 
 export default function OrderDetails() {
   const { orderNo } = useParams();
@@ -33,7 +34,46 @@ export default function OrderDetails() {
   const [packageDetails, setPackageDetails] = useState<ProcessedPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  const fetchOrder = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/orders/${orderNo}`, {
+        cache: 'no-store', // Prevent caching
+        next: { revalidate: 0 } // Disable revalidation
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch order');
+      }
+      const data = await response.json();
+      setOrder(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [orderNo]);
+
+  useEffect(() => {
+    if (orderNo) {
+      fetchOrder();
+    }
+  }, [orderNo, fetchOrder]);
+
+  // Handle visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && orderNo) {
+        fetchOrder();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [orderNo, fetchOrder]);
 
   // Get payment status from URL
   useEffect(() => {
@@ -60,82 +100,9 @@ export default function OrderDetails() {
   // Fetch order details when component mounts, but only if payment was successful
   useEffect(() => {
     if (session?.user && !paymentStatus) {
-      fetchOrderDetails();
+      fetchOrder();
     }
   }, [session?.user, orderNo, paymentStatus]);
-
-  useEffect(() => {
-    const processAndCheckStatus = async () => {
-      try {
-        // 1. First, trigger the order processing
-        const processResponse = await fetch(`/api/process-order/${orderNo}`, {
-          method: 'POST'
-        });
-        
-        if (!processResponse.ok) {
-          throw new Error('Failed to start order processing');
-        }
-
-        // 2. Then start polling for status
-        const checkStatus = async () => {
-          try {
-            const response = await fetch(`/api/process-order/${orderNo}`);
-            const data = await response.json();
-
-            if (data.status === 'GOT_RESOURCE') {
-              setPaymentStatus('completed');
-              setOrder(data.order);
-              setPackageDetails(data.packageDetails);
-              // Clear the polling interval
-              if (pollingInterval) {
-                clearInterval(pollingInterval);
-                setPollingInterval(null);
-              }
-              // Show success for 3 seconds before redirecting
-              setTimeout(() => {
-                router.push(`/orders/${data.order.orderNo}`);
-              }, 3000);
-            } else if (data.status === 'FAILED') {
-              setPaymentStatus('failed');
-              setError(data.error);
-              // Clear the polling interval on failure
-              if (pollingInterval) {
-                clearInterval(pollingInterval);
-                setPollingInterval(null);
-              }
-            }
-          } catch (error) {
-            console.error('Error checking status:', error);
-          }
-        };
-
-        // Check status every 5 seconds
-        const interval = setInterval(checkStatus, 5000);
-        setPollingInterval(interval);
-
-        // Cleanup function
-        return () => {
-          if (interval) {
-            clearInterval(interval);
-          }
-        };
-      } catch (error) {
-        setPaymentStatus('failed');
-        setError('Failed to process order');
-      }
-    };
-
-    processAndCheckStatus();
-  }, [orderNo, router]);
-
-  // Cleanup polling interval on component unmount
-  useEffect(() => {
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [pollingInterval]);
 
   const fetchOrderDetails = async () => {
     try {
@@ -192,62 +159,38 @@ export default function OrderDetails() {
 
   if (status === 'loading' || loading) {
     return (
-      <>
-        <Navbar />
-        <Container sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={60} />
-        </Container>
-        <Footer />
-      </>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
-  if (!session) {
-    return null; // Will redirect in useEffect
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
   }
 
   if (error) {
     return (
-      <>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Navbar />
-        <Container maxWidth="md" sx={{ py: 8 }}>
-          <Alert 
-            severity={paymentStatus === 'failed' || paymentStatus === 'expired' || paymentStatus === 'canceled' ? 'error' : 'warning'} 
-            sx={{ mb: 2 }}
-          >
-            {error}
-          </Alert>
-          <Button 
-            startIcon={<ArrowBackIcon />} 
-            onClick={handleBack}
-            variant="contained"
-          >
-            Back to Account
-          </Button>
+        <Container sx={{ flex: 1, py: 4 }}>
+          <Alert severity="error">{error}</Alert>
         </Container>
         <Footer />
-      </>
+      </Box>
     );
   }
 
   if (!order) {
     return (
-      <>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Navbar />
-        <Container maxWidth="md" sx={{ py: 8 }}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Order not found
-          </Alert>
-          <Button 
-            startIcon={<ArrowBackIcon />} 
-            onClick={handleBack}
-            variant="contained"
-          >
-            Back to Account
-          </Button>
+        <Container sx={{ flex: 1, py: 4 }}>
+          <Typography>Order not found</Typography>
         </Container>
         <Footer />
-      </>
+      </Box>
     );
   }
 
@@ -255,242 +198,77 @@ export default function OrderDetails() {
                   order.status === 'READY_FOR_DOWNLOAD' || order.status === 'GOT_RESOURCE';
 
   return (
-    <>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar />
-      <Container maxWidth="md" sx={{ py: 8 }}>
-        <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4" component="h1" fontWeight="bold">
-              Order Details
-            </Typography>
-            <Button 
-              startIcon={<ArrowBackIcon />} 
-              onClick={handleBack}
-              variant="outlined"
-            >
-              Back to Account
-            </Button>
-          </Box>
-          
-          <Divider sx={{ my: 3 }} />
-          
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Order Information
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary">Order Number</Typography>
-                    <Typography variant="body1" fontWeight="medium">{order.orderNo}</Typography>
-                  </CardContent>
-                </Card>
-              </Box>
-              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary">Status</Typography>
-                    <Typography variant="body1" fontWeight="medium">{order.status}</Typography>
-                  </CardContent>
-                </Card>
-              </Box>
+      <Container sx={{ flex: 1, py: 4, overflow: 'auto' }}>
+        <Typography variant="h4" gutterBottom>
+          Order Details
+        </Typography>
+        
+        <Grid container spacing={3}>
+          {/* Order Information */}
+          <Grid columns={{ xs: 12, md: 6 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Order Information</Typography>
+                <Typography><strong>Order Number:</strong> {order.orderNo}</Typography>
+                <Typography><strong>Status:</strong> {order.status}</Typography>
+                <Typography><strong>Amount:</strong> {order.finalAmountPaid} {order.currency}</Typography>
+                <Typography><strong>Payment Method:</strong> {order.pmName}</Typography>
+                <Typography><strong>Transaction ID:</strong> {order.transactionId}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
 
-              {order.discountCode && (
-                <>
-                  <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">Discount Code</Typography>
-                        <Typography variant="body1" fontWeight="medium">{order.discountCode}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                  <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">Discount Applied</Typography>
-                        <Typography variant="body1" fontWeight="medium" color="success.main">
-                          {order.discountPercentage}%
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                </>
-              )}
-            </Box>
-          </Box>
-          
-          <Divider sx={{ my: 3 }} />
-          
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Package Information
-            </Typography>
-            {packageDetails ? (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">Package Name</Typography>
-                      <Typography variant="body1" fontWeight="medium" color="error">{packageDetails.packageName}</Typography>
-                    </CardContent>
-                  </Card>
+          {/* eSIM Details */}
+          {order.status === 'GOT_RESOURCE' && (
+            <Grid columns={{ xs: 12, md: 6 }}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>eSIM Details</Typography>
+                  <Typography><strong>ICCID:</strong> {order.iccid}</Typography>
+                  <Typography><strong>Data Remaining:</strong> {order.dataRemaining} bytes</Typography>
+                  <Typography><strong>Data Used:</strong> {order.dataUsed} bytes</Typography>
+                  <Typography><strong>Expiry Date:</strong> {new Date(order.expiryDate).toLocaleDateString()}</Typography>
+                  <Typography><strong>Days Remaining:</strong> {order.daysRemaining}</Typography>
+                  <Typography><strong>SMDP Status:</strong> {order.smdpStatus}</Typography>
+                  <Typography><strong>eSIM Status:</strong> {order.esimStatus}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+
+          {/* QR Code */}
+          {order.qrCode && (
+            <Grid columns={{ xs: 12 }}>
+              <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="h6" gutterBottom>eSIM QR Code</Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center',
+                  p: 2,
+                  bgcolor: '#f5f5f5',
+                  borderRadius: 1
+                }}>
+                  <img 
+                    src={order.qrCode} 
+                    alt="eSIM QR Code" 
+                    style={{ 
+                      maxWidth: '300px', 
+                      height: 'auto',
+                      borderRadius: '4px'
+                    }} 
+                  />
                 </Box>
-                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">Duration</Typography>
-                      <Typography variant="body1" fontWeight="medium">{packageDetails.duration} days</Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">Data Size</Typography>
-                      <Typography variant="body1" fontWeight="medium">{formatDataSize(packageDetails.dataSize)}</Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">Location</Typography>
-                      <Typography variant="body1" fontWeight="medium">{packageDetails.location}</Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">Speed</Typography>
-                      <Typography variant="body1" fontWeight="medium">{packageDetails.speed}</Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-              </Box>
-            ) : (
-              <Alert severity="info">Package details not available</Alert>
-            )}
-          </Box>
-          
-          <Divider sx={{ my: 3 }} />
-          
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              eSIM Information
-            </Typography>
-            
-            {isActive && order.qrCode && (
-              <Box sx={{ 
-                textAlign: 'center', 
-                mb: 3,
-                p: 2,
-                bgcolor: '#f5f5f5',
-                borderRadius: '8px'
-              }}>
-                <img 
-                  src={order.qrCode}
-                  alt="eSIM QR Code"
-                  style={{ 
-                    maxWidth: '100%', 
-                    height: 'auto',
-                    borderRadius: '4px'
-                  }}
-                />
-                <Typography 
-                  variant="caption" 
-                  color="text.secondary" 
-                  sx={{ 
-                    mt: 1, 
-                    display: 'block',
-                    fontWeight: 'medium'
-                  }}
-                >
-                  Scan to install eSIM
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Scan this QR code to install your eSIM
                 </Typography>
-              </Box>
-            )}
-            
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary">Data Used</Typography>
-                    <Typography variant="body1" fontWeight="medium">
-                      {formatDataSize(order.dataUsed || 0)}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Box>
-              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary">Data Remaining</Typography>
-                    <Typography variant="body1" fontWeight="medium">
-                      {formatDataSize(order.dataRemaining || 0)}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Box>
-              {order.daysRemaining !== undefined && (
-                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">Days Remaining</Typography>
-                      <Typography variant="body1" fontWeight="medium" color="error">{order.daysRemaining} days</Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
-              {order.expiryDate && (
-                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.primary">Expiry Date</Typography>
-                      <Typography variant="body1" fontWeight="medium" color="error">
-                        {formatDate(order.expiryDate)}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
-
-              <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary">Status</Typography>
-                    <Typography variant="body1" fontWeight="medium">{order.status}</Typography>
-                  </CardContent>
-                </Card>
-              </Box>
-              {order.iccid && (
-                <Box sx={{ flex: '1 1 calc(50% - 8px)', minWidth: 300 }}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">ICCID</Typography>
-                      <Typography variant="body1" fontWeight="medium">{order.iccid}</Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
-            </Box>
-          </Box>
-          
-          <Divider sx={{ my: 3 }} />
-          
-          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <Button 
-              variant="outlined" 
-              onClick={handleBack}
-            >
-              Back to Account
-            </Button>
-          </Box>
-        </Paper>
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
       </Container>
       <Footer />
-    </>
+    </Box>
   );
 }

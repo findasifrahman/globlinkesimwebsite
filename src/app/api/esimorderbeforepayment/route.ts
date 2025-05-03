@@ -12,7 +12,17 @@ export async function POST(req: Request) {
     }
     console.log("inside esimorderbeforepayment-------------------------");
     const body = await req.json();
-    const { paymentOrderNo, packageCode, count, amount, currency } = body;
+    const {
+      paymentOrderNo,
+      packageCode,
+      count,
+      amount,
+      currency,
+      discountCode,
+      finalAmountPaid,
+      isTopUp = false,
+      originalOrderNo = null
+    } = body;
 
     if (!paymentOrderNo || !packageCode || !count || !amount || !currency) {
       return NextResponse.json(

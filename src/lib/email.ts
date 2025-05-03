@@ -256,3 +256,40 @@ export async function sendPaymentConfirmationEmail(email: string, orderId: strin
     throw error;
   }
 } 
+
+export async function sendCreateEsimFailedEmail(email: string, orderId: string) {
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const orderUrl = `${baseUrl}/orders/${orderId}`;
+
+    const emailContent = {
+      from: process.env.EMAIL_FROM || 'noreply@globlinksolution.com',
+      to: email,
+      subject: 'Payment Received - But esim creation failed.',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Payment Received Successfully</h2>
+          <p>Thank you for your payment. We have received your order But esim creation failed. Please send email to globlinksolution@gmail.com with order details</p>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p><strong>Order ID:</strong> ${orderId}</p>
+            <p><strong>Status:</strong> Processing</p>
+          </div>
+
+          <p>We arer deeply sorry that your esim creation failed </p>
+          
+          
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            This is an automated message. Please do not reply to this email.
+          </p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(emailContent);
+    console.log(`esim creation failed  creation failed email sent to ${email} for order ${orderId}`);
+  } catch (error) {
+    console.error('Error sending esim creation failed confirmation email:', error);
+    throw error;
+  }
+} 

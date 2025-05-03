@@ -2,32 +2,16 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { pollForOrderStatus, queryEsimProfile } from '@/lib/esim';
-import { sendEsimEmail,sendPaymentConfirmationEmail } from '@/lib/email';
+import { sendCreateEsimFailedEmail,sendPaymentConfirmationEmail } from '@/lib/email';
 
-import crypto from 'crypto';
+
 //import {  p } from '@/app/api/esim/poll-status/route';
 // Mark this route as dynamic to prevent static generation
 export const dynamic = 'force-dynamic';
 
-const REDTEA_API_URL = 'https://api.esimaccess.com/api/v1/open/esim/order';
-const REDTEA_ACCESS_CODE = process.env.ESIM_ACCESS_CODE;
-const REDTEA_SECRET_KEY = process.env.ESIM_SECRET_KEY;
 
-// Function to generate HMAC signature
-function generateHmacSignature(timestamp: string, requestId: string, accessCode: string, requestBody: string, secretKey: string): string {
-  // Concatenate the input parameters in the specified order
-  const dataToSign = timestamp + requestId + accessCode + requestBody;
-  
-  // Create HMAC using SHA256 algorithm
-  const hmac = crypto.createHmac('sha256', secretKey);
-  
-  // Update with the data to sign
-  hmac.update(dataToSign);
-  
-  // Generate the signature and convert to lowercase hexadecimal
-  return hmac.digest('hex').toLowerCase();
-}
+
+
 
 export async function GET(req: Request) {
   try {
@@ -89,6 +73,7 @@ export async function GET(req: Request) {
 
       if (!updatedOrderBeforePayment) {
         console.log("Failed to update order before payment--", updatedOrderBeforePayment);
+        await sendCreateEsimFailedEmail(session.user.email, orderId);
         return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
       }
       console.log("Successfully updated order before payment--", updatedOrderBeforePayment);
@@ -114,6 +99,7 @@ export async function GET(req: Request) {
 
       if (!orderAfterPayment) {
         console.log("Failed to create order after payment--", orderAfterPayment);
+        await sendCreateEsimFailedEmail(session.user.email, orderId);
         return NextResponse.json({ error: 'Failed to create order after payment' }, { status: 500 });
       }
       console.log("Successfully created order after payment--", orderAfterPayment);
@@ -130,81 +116,13 @@ export async function GET(req: Request) {
                   updatedAt: new Date()
                 }
               });
+
             // 4. Send immediate confirmation email
             await sendPaymentConfirmationEmail(session.user.email, orderId);
                   // 5. Redirect to processing page
             return NextResponse.redirect(new URL(`/payment-success/${orderId}`, baseUrl));
      
-            /*
-      // Create eSIM order with Redtea API
-      await createesimorder(
-        updatedOrderBeforePayment.packageCode,
-        updatedOrderBeforePayment.count,
-        updatedOrderBeforePayment.finalAmountPaid,
-        paymentState.transactionId,
-        orderId // THIS IS PAYMENT orderNo
-      );
-
-      // Poll for GOT_RESOURCE status
-      const { webhook_esimProfile } = await pollForOrderStatus(orderId,orderId, paymentState.transactionId);
-      if (!webhook_esimProfile) {
-        console.log("eSIM order is not ready yet");
-        return NextResponse.redirect(new URL(`/orders/${orderId}?status=pending`, baseUrl));
-      }
-      console.log("webhook_esimProfile is--", webhook_esimProfile);
-      // Query eSIM profile details
-      const esimProfile = await queryEsimProfile(webhook_esimProfile.content.orderNo);
-
-      //
-              // Prepare extended eSIM profile for email
-              const extendedEsimProfile = {
-                ...esimProfile,
-                packageCode: updatedOrderBeforePayment.packageCode,
-                amount: Number(paymentState.amount),
-                currency: paymentState.currency,
-                discountCode: updatedOrderBeforePayment.discountCode,
-              };
-        
-              // Send email with eSIM details
-              await sendEsimEmail(session.user.email, orderId, extendedEsimProfile);
-      //
-      // Update order with eSIM profile details
-      const updatedOrderAfterPayment = await prisma.esimOrderAfterPayment.update({
-        where: { paymentOrderNo: orderId },
-        data: {
-          status: 'GOT_RESOURCE',
-          qrCode: esimProfile.qrCode,
-          iccid: esimProfile.iccid,
-          smdpStatus: esimProfile.smdpStatus,
-          esimStatus: esimProfile.esimStatus,
-          dataRemaining: esimProfile.dataRemaining,
-          dataUsed: esimProfile.dataUsed,
-          expiryDate: esimProfile.expiryDate ? new Date(esimProfile.expiryDate) : null,
-          daysRemaining: esimProfile.daysRemaining,
-          updatedAt: new Date()
-        }
-      });
-      if (!updatedOrderAfterPayment) {
-        console.log("Failed to update order after payment--", updatedOrderAfterPayment);
-        return NextResponse.json({ error: 'Failed to update order after payment' }, { status: 500 });
-      }
-      console.log("Successfully updated order after esim order is created--", updatedOrderAfterPayment);
-
-
-
-      // Get the updated order to get the correct orderNo
-      const updatedOrder = await prisma.esimOrderAfterPayment.findUnique({
-        where: { paymentOrderNo: orderId }
-      });
-
-      if (!updatedOrder) {
-        console.error("Failed to find updated order");
-        return NextResponse.redirect(new URL(`/orders/${orderId}?status=error`, baseUrl));
-      }
-
-      // Redirect to success page using the correct order number
-      return NextResponse.redirect(new URL(`/orders/${updatedOrder.orderNo}`, baseUrl));
-      */
+ 
     } else {
       // Redirect to failure page using the same base URL
       console.log("payment state is failed or pending--", orderId);
@@ -219,119 +137,3 @@ export async function GET(req: Request) {
   }
 }
 
-async function createesimorder(packageCode: string, count: number, price: number,transactionId: string, paymentOrderNo: string) {
-  try {
-
-
-    // Check if environment variables are set
-    if (!REDTEA_ACCESS_CODE || !REDTEA_SECRET_KEY) {
-      console.error('Missing environment variables: ESIM_ACCESS_CODE or ESIM_SECRET_KEY');
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-    }
-
-
-
-    // Get package details
-    const packageDetails = await prisma.allPackage.findUnique({
-      where: { packageCode },
-    });
-    console.log("package details are in return route--", packageDetails);
-    if (!packageDetails) {
-      return NextResponse.json({ error: 'Package not found' }, { status: 404 });
-    }
-
-    // Generate timestamp and transaction ID
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    //const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-
-    // Prepare request body
-    const requestBody = JSON.stringify({
-      transactionId,
-      packageInfoList: [{
-        packageCode,
-        count,
-        price,
-        periodNum: packageDetails.duration
-      }]
-    });
-
-    // Generate signature
-    const signature = generateHmacSignature(
-      timestamp,
-      transactionId,
-      REDTEA_ACCESS_CODE,
-      requestBody,
-      REDTEA_SECRET_KEY
-    );
-
-    
-    // Make request to Redtea Mobile API
-    const response = await fetch(REDTEA_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Timestamp': timestamp,
-        'RT-AccessCode': REDTEA_ACCESS_CODE,
-        'X-Signature': signature
-      },
-      body: requestBody
-    });
-
-    const result = await response.json();
-    console.log("result from esim order after payment in createesimorder--", result);
-    if (!response.ok || !result.success) {
-      // If Redtea API call fails, update order status to FAILED
-      await prisma.esimOrderAfterPayment.update({
-        where: { paymentOrderNo: paymentOrderNo },
-        data: { 
-          orderNo: result.obj.orderNo,
-          status: 'FAILED' 
-        },
-      });
-      throw new Error(result.errorMsg || 'Failed to create order with provider');
-    }
-
-    // Update order with esim order number from API response
-    try {
-      await prisma.$transaction([
-        prisma.esimOrderAfterPayment.update({
-        where: { paymentOrderNo: paymentOrderNo },
-        data: {
-          orderNo: result.obj.orderNo,
-          status: 'PROCESSING',
-        },
-      }),
-      prisma.esimOrderBeforePayment.update({
-        where: { paymentOrderNo: paymentOrderNo },
-        data: {
-          orderNo: result.obj.orderNo,
-          status: 'PROCESSING',
-        },
-      }),
-    ]);
-    } catch (error) {
-      console.error('Error updating order:', error);
-      throw new Error('Failed to update order');
-    }
-
-    /*return NextResponse.json({ 
-      success: true, 
-      order: {
-        ...order,
-        orderNo: result.obj.orderNo,
-      },
-      orderProfile: {
-        ...orderProfile,
-        orderNo: result.obj.orderNo,
-      },
-      redirectUrl: `/orders/${result.obj.orderNo}`
-    });*/
-
-  } catch (error) {
-    console.error('Error creating esim order:', error);
-    return NextResponse.json(
-      { error: 'Failed to create order' },
-      { status: 500 }
-    );
-  }
-}

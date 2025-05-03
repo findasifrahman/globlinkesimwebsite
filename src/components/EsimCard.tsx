@@ -1,11 +1,32 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, Typography, Button, Box, Chip, Divider } from '@mui/material';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Alert,
+  Collapse,
+  IconButton,
+  Dialog,
+  DialogContent,
+} from '@mui/material';
+import {
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  QrCode as QrCodeIcon,
+  Add as AddIcon,
+} from '@mui/icons-material';
 import { Order } from '@/types/order';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import Image from 'next/image';
+import TopUpConfirmationModal from './TopUpConfirmationModal';
+import { useTheme } from '@mui/material/styles';
 
 interface EsimCardProps {
   order: Order;
-  onRefresh: () => void;
+  onTopUp: (order: Order) => Promise<void>;
 }
 
 interface PackageDetails {
@@ -15,12 +36,32 @@ interface PackageDetails {
   dataSize: number;
   location: string;
   speed: string;
+  retailPrice: number;
+  currencyCode: string;
 }
 
-export default function EsimCard({ order, onRefresh }: EsimCardProps) {
-  const [packageDetails, setPackageDetails] = useState<PackageDetails | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const isActive = order.status === 'ACTIVE' || order.status === 'PROCESSING' || order.status === 'READY_FOR_DOWNLOAD' || order.status === 'GOT_RESOURCE';
+export default function EsimCard({ order, onTopUp }: EsimCardProps) {
+  const [packageDetails, setPackageDetails] = useState<{
+    packageCode: string;
+    packageName: string;
+    duration: number;
+    dataSize: number;
+    location: string;
+    speed: string;
+    retailPrice: number;
+    currencyCode: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const isActive = order.status === 'ACTIVE' || 
+                  order.status === 'PROCESSING' || 
+                  order.status === 'READY_FOR_DOWNLOAD' || 
+                  order.status === 'GOT_RESOURCE' ||
+                  order.status === 'USED_UP';
+  const theme = useTheme();
   
   // Format date to DD/MM/YYYY HH:MM
   const formatDate = (dateString: string) => {
@@ -43,8 +84,9 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
   
   // Use useCallback to prevent unnecessary re-renders
   const fetchPackageDetails = useCallback(async () => {
-    if (!order.package_code) {
-      console.log('No package_code available for order:', order.orderNo);
+    if (!order.packageCode) {
+
+      console.log('No package_code available for order:', order);
       return;
     }
 
@@ -61,8 +103,8 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
           
           // Find the package that matches the order's package_code
           const foundPackage = parsedPackages.find((pkg: any) => {
-            const matches = pkg.package_code === order.package_code || 
-                           pkg.packageCode === order.package_code;
+            const matches = pkg.packageCode === order.packageCode || 
+                           pkg.packageCode === order.packageCode;
             //console.log(`Comparing ${pkg.package_code || pkg.packageCode} with ${order.package_code}: ${matches}`);
             return matches;
           });
@@ -71,18 +113,20 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
           
           if (foundPackage) {
             const packageDetails = {
-              packageCode: foundPackage.package_code || foundPackage.packageCode,
+              packageCode: foundPackage.packageCode,
               packageName: foundPackage.packageName || foundPackage.packageName,
               duration: foundPackage.duration,
               dataSize: foundPackage.data_size || foundPackage.dataSize || 0,
               location: foundPackage.location,
-              speed: foundPackage.speed
+              speed: foundPackage.speed,
+              retailPrice: foundPackage.retailPrice || 0,
+              currencyCode: foundPackage.currencyCode || 'USD'
             };
             //console.log('Setting package details:', packageDetails);
             setPackageDetails(packageDetails);
             return;
           } else {
-            console.log('Package not found in localStorage for code:', order.package_code);
+            console.log('Package not found in localStorage for code:', order.packageCode);
           }
         } catch (e) {
           console.error('Error parsing stored packages:', e);
@@ -92,8 +136,8 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
       }
       
       // If not in localStorage or parsing failed, fetch from API
-      console.log('Fetching package details from API for:', order.package_code);
-      const response = await fetch(`/api/packages/${order.package_code}`);
+      console.log('Fetching package details from API for:', order.packageCode);
+      const response = await fetch(`/api/packages/${order.packageCode}`);
       if (response.ok) {
         const data = await response.json();
         console.log('API response:', data);
@@ -104,7 +148,7 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
     } catch (error) {
       console.error('Error fetching package details:', error);
     }
-  }, [order.package_code, order.orderNo]);
+  }, [order.packageCode, order.orderNo]);
 
   useEffect(() => {
     fetchPackageDetails();
@@ -116,12 +160,25 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
     return `${mb.toFixed(2)} MB`;
   };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
+  const handleTopUp = async () => {
     try {
-      await onRefresh();
-    } finally {
-      setIsRefreshing(false);
+      // Get packages from localStorage
+      const storedPackages = localStorage.getItem('packages');
+      if (!storedPackages) {
+        throw new Error('Package details not available');
+      }
+
+      const packages = JSON.parse(storedPackages);
+      const foundPackage = packages.find((pkg: any) => pkg.packageCode === order.packageCode);
+      
+      if (!foundPackage) {
+        throw new Error('Package not found');
+      }
+
+      setPackageDetails(foundPackage);
+      setShowTopUpModal(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to initiate top-up');
     }
   };
 
@@ -130,185 +187,141 @@ export default function EsimCard({ order, onRefresh }: EsimCardProps) {
     //console.log('Order data:', order);
   }, [order.orderNo]); // Only log when order number changes
 
-  return (
-    <Card sx={{ 
-      height: '100%', 
-      display: 'flex', 
-      flexDirection: 'column',
-      boxShadow: isActive ? '0 4px 8px rgba(0,0,0,0.1)' : '0 2px 4px rgba(0,0,0,0.05)',
-      border: isActive ? '1px solid #4caf50' : '1px solid #e0e0e0',
-      borderRadius: '12px',
-      overflow: 'hidden'
-    }}>
-      <CardContent sx={{ flexGrow: 1, p: 3 }}>
-        <Box sx={{ mb: 2 }}>
-          <Typography 
-            variant="h5" 
-            gutterBottom 
-            sx={{ 
-              fontWeight: 'bold',
-              color: '#1976d2',
-              mb: 1
-            }}
-          >
-            {packageDetails?.packageName || 'Loading...'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Order: {order.orderNo}
-          </Typography>
-          <Chip 
-            label={order.status} 
-            color={isActive ? 'success' : 'default'}
-            size="small"
-            sx={{ 
-              mt: 1,
-              fontWeight: 'bold',
-              px: 1
-            }}
-          />
-        </Box>
+  // Function to check if eSIM is eligible for top-up
+  const isEligibleForTopUp = () => {
+    // Check if eSIM is eligible for top-up based on Redtea Mobile API criteria
+    const eligibleEsimStatus = ['IN_USE', 'USED_UP', 'GOT_RESOURCE'];
+    return (
+      eligibleEsimStatus.includes(order.esimStatus || '') && 
+      order.smdpStatus === 'ENABLED'
+    );
+  };
 
-        {isActive && order.qrCode && (
-          <Box sx={{ 
-            textAlign: 'center', 
-            mb: 3,
-            p: 2,
-            bgcolor: '#f5f5f5',
-            borderRadius: '8px'
-          }}>
-            <img 
-              src={order.qrCode}
-              alt="eSIM QR Code"
-              style={{ 
-                maxWidth: '100%', 
-                height: 'auto',
-                borderRadius: '4px'
-              }}
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+      case 'GOT_RESOURCE':
+        return 'success';
+      case 'PROCESSING':
+      case 'READY_FOR_DOWNLOAD':
+        return 'warning';
+      case 'CANCEL':
+      case 'FAILED':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  return (
+    <>
+      <Card sx={{ 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        boxShadow: isActive ? '0 4px 8px rgba(0,0,0,0.1)' : '0 2px 4px rgba(0,0,0,0.05)',
+        border: isActive ? '1px solid #4caf50' : '1px solid #e0e0e0',
+        borderRadius: '12px',
+        overflow: 'hidden'
+      }}>
+        <CardContent sx={{ flexGrow: 1, p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" component="div">
+              {order.packageCode || 'Unknown Package'}
+            </Typography>
+            <Chip
+              label={order.status}
+              color={getStatusColor(order.status)}
+              size="small"
             />
-            <Typography 
-              variant="caption" 
-              color="text.secondary" 
-              sx={{ 
-                mt: 1, 
-                display: 'block',
-                fontWeight: 'medium'
-              }}
-            >
-              Scan to install eSIM
+          </Box>
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Order No: {order.orderNo}
+            </Typography>
+            {order.iccid && (
+              <Typography variant="body2" color="text.secondary">
+                ICCID: {order.iccid}
+              </Typography>
+            )}
+          </Box>
+
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              Data Remaining: {order.dataRemaining ? `${(order.dataRemaining / (1024 * 1024)).toFixed(2)} MB` : 'N/A'}
+            </Typography>
+            <Typography variant="body2">
+              Data Used: {order.dataUsed ? `${(order.dataUsed / (1024 * 1024)).toFixed(2)} MB` : 'N/A'}
+            </Typography>
+            <Typography variant="body2">
+              Days Remaining: {order.daysRemaining || 'N/A'}
             </Typography>
           </Box>
-        )}
 
-        <Divider sx={{ my: 2 }} />
+          {isEligibleForTopUp() && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleTopUp}
+              disabled={loading}
+              sx={{ 
+                mt: 2,
+                width: '100%',
+                fontWeight: 'bold',
+                '&:hover': {
+                  bgcolor: theme.palette.primary.dark
+                }
+              }}
+            >
+              Top Up
+            </Button>
+          )}
 
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1fr 1fr', 
-            gap: 2 
-          }}>
-            <Box sx={{ 
-              p: 1.5, 
-              bgcolor: '#f5f5f5', 
-              borderRadius: '8px',
-              border: '1px solid #e0e0e0'
-            }}>
-              <Typography variant="body2" color="text.secondary">
-                Data Remaining
-              </Typography>
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 'bold',
-                  color: '#d32f2f'
-                }}
+          {order.qrCode && (
+            <>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<QrCodeIcon />}
+                onClick={() => setShowQrCode(true)}
+                sx={{ mt: 2 }}
               >
-                {formatDataSize(order.dataRemaining)}
-              </Typography>
-            </Box>
-            <Box sx={{ 
-              p: 1.5, 
-              bgcolor: '#f5f5f5', 
-              borderRadius: '8px',
-              border: '1px solid #e0e0e0'
-            }}>
-              <Typography variant="body2" color="text.secondary">
-                Data Used
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                {formatDataSize(order.dataUsed)}
-              </Typography>
-            </Box>
-            {order.daysRemaining !== undefined && (
-              <Box sx={{ 
-                p: 1.5, 
-                bgcolor: '#f5f5f5', 
-                borderRadius: '8px',
-                border: '1px solid #e0e0e0'
-              }}>
-                <Typography variant="body2" color="text.secondary">
-                  Days Remaining
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {order.daysRemaining} days
-                </Typography>
-              </Box>
-            )}
-            {order.createdAt !== undefined && (
-              <Box sx={{ 
-                p: 1.5, 
-                bgcolor: '#f5f5f5', 
-                borderRadius: '8px',
-                border: '1px solid #e0e0e0'
-              }}>
-                <Typography variant="body2" color="text.secondary">
-                  Purchase Date
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {formatDate(order.createdAt)}
-                </Typography>
-              </Box>
-            )}
-            {order.expiryDate && (
-              <Box sx={{ 
-                p: 1.5, 
-                bgcolor: '#f5f5f5', 
-                borderRadius: '8px',
-                border: '1px solid #e0e0e0'
-              }}>
-                <Typography variant="body2" color="text.secondary">
-                  Activate Before
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    fontWeight: 'bold',
-                    color: '#d32f2f'
-                  }}
-                >
-                  {new Date(order.expiryDate).toLocaleDateString()}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </Box>
+                Show QR Code
+              </Button>
 
-        <Button 
-          variant="contained" 
-          onClick={handleRefresh}
-          fullWidth
-          startIcon={<RefreshIcon />}
-          disabled={isRefreshing}
-          sx={{ 
-            mt: 2,
-            py: 1.2,
-            borderRadius: '8px',
-            fontWeight: 'bold'
-          }}
-        >
-          {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
-        </Button>
-      </CardContent>
-    </Card>
+              <Dialog
+                open={showQrCode}
+                onClose={() => setShowQrCode(false)}
+                maxWidth="sm"
+                fullWidth
+              >
+                <DialogContent sx={{ textAlign: 'center' }}>
+                  <Image
+                    src={order.qrCode}
+                    alt="eSIM QR Code"
+                    width={300}
+                    height={300}
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                  />
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <TopUpConfirmationModal
+        open={showTopUpModal}
+        onClose={() => setShowTopUpModal(false)}
+        order={order}
+      />
+    </>
   );
 } 

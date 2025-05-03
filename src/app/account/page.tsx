@@ -20,6 +20,7 @@ import Footer from '@/components/Footer';
 import EsimCard from '@/components/EsimCard';
 import { Order } from '@/types/order';
 import { queryEsimProfile } from '@/lib/esim';
+import TopUpConfirmationModal from '@/components/TopUpConfirmationModal';
 // We'll use the existing Session type from next-auth instead of extending it
 // This avoids the type conflict
 
@@ -32,6 +33,8 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const lastFetchTime = useRef<number>(0);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -68,22 +71,19 @@ export default function AccountPage() {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/orders', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      setError(null);
+      
+      const response = await fetch('/api/orders');
       if (!response.ok) {
         throw new Error('Failed to fetch orders');
       }
-      const data = await response.json();
       
-      // Process each order and fetch its profile data
+      const data = await response.json();
+      console.log('[Account Page] Fetched orders:', data.orders.length);
+
       const processedOrders = await Promise.all(data.orders.map(async (order: any) => {
         try {
-          // Fetch the eSIM profile for this order using the correct API endpoint
-          //${order.orderNo}
+          console.log(`[Account Page] Fetching profile for order: ${order.orderNo}`);
           const profileResponse = await fetch(`/api/orders/${order.orderNo}/profile`, {
             method: 'GET',
             headers: {
@@ -92,24 +92,20 @@ export default function AccountPage() {
           });
 
           if (!profileResponse.ok) {
-            console.error(`Failed to fetch profile for order ${order.orderNo}:`, profileResponse.statusText);
-            return order; // Return original order if profile fetch failed
+            console.error(`[Account Page] Failed to fetch profile for order ${order.orderNo}:`, profileResponse.statusText);
+            return null; // Return null to filter out this order
           }
           
           const profileData = await profileResponse.json();
-          console.log("profileData---",profileData);
-          if (!profileData) {
-            console.error(`Profile fetch failed for order ${order.orderNo}:`, profileData.error);
-            return order; // Return original order if profile fetch failed
+          console.log(`[Account Page] Profile data for ${order.orderNo}:`, profileData);
+
+          // If the order doesn't exist in Redtea Mobile, filter it out
+          if (profileData.error === 'No profile data available' || 
+              profileData.error === 'the batchOrderNo doesn`t exist') {
+            console.log(`[Account Page] Order ${order.orderNo} not found in Redtea Mobile, filtering out`);
+            return null;
           }
-          
-          // Extract the updated values
-          const updatedStatus = profileData.esimStatus;
-          const updatedDataRemaining = profileData.dataRemaining;
-          const updatedDataUsed = profileData.dataUsed;
-          const updatedSmdpStatus = profileData.smdpStatus;
-          const updatedQrCode = profileData.qrCode;
-          const updatedDaysRemaining = profileData.daysRemaining;
+
           // Update the database with the new values
           try {
             const updateResponse = await fetch('/api/update-order', {
@@ -119,47 +115,50 @@ export default function AccountPage() {
               },
               body: JSON.stringify({
                 orderNo: order.orderNo,
-                status: updatedStatus,
-                dataRemaining: updatedDataRemaining,
-                dataUsed: updatedDataUsed,
-                smdpStatus: updatedSmdpStatus,
-                qrCode: updatedQrCode,
-                daysRemaining: updatedDaysRemaining
+                status: profileData.status || order.status || 'UNKNOWN',
+                dataRemaining: profileData.dataRemaining ?? order.dataRemaining,
+                dataUsed: profileData.dataUsed ?? order.dataUsed,
+                smdpStatus: profileData.smdpStatus || order.smdpStatus,
+                qrCode: profileData.qrCode || order.qrCode,
+                daysRemaining: profileData.daysRemaining ?? order.daysRemaining
               }),
             });
 
             if (!updateResponse.ok) {
-              console.error(`Failed to update order ${order.orderNo} in database:`, await updateResponse.text());
+              console.error(`[Account Page] Failed to update order ${order.orderNo} in database:`, await updateResponse.text());
             }
           } catch (updateError) {
-            console.error(`Error updating order ${order.orderNo} in database:`, updateError);
+            console.error(`[Account Page] Error updating order ${order.orderNo} in database:`, updateError);
           }
-          console.log("profileData.data.update Successfully order---",order);
-          // Update the order with profile data
+
           return {
             ...order,
-            status: updatedStatus,
-            dataRemaining: updatedDataRemaining,
-            dataUsed: updatedDataUsed,
-            expiryDate: profileData.expiryDate,
+            status: profileData.status || order.status || 'UNKNOWN',
+            dataRemaining: profileData.dataRemaining ?? order.dataRemaining,
+            dataUsed: profileData.dataUsed ?? order.dataUsed,
+            expiryDate: profileData.expiryDate || order.expiryDate,
             package_code: order.package_code || profileData.packageCode || 'unknown',
-            packageCode: order.package_code || profileData.packageCode || 'unknown', // For backward compatibility
-            esimStatus: updatedStatus,
-            smdpStatus: updatedSmdpStatus,
-            qrCode: updatedQrCode,
-            iccid: profileData.iccid
+            packageCode: order.package_code || profileData.packageCode || 'unknown',
+            esimStatus: profileData.esimStatus || order.esimStatus,
+            smdpStatus: profileData.smdpStatus || order.smdpStatus,
+            qrCode: profileData.qrCode || order.qrCode,
+            iccid: profileData.iccid || order.iccid,
+            error: profileData.error
           };
         } catch (error) {
-          console.error(`Error processing order ${order.orderNo}:`, error);
-          return order; // Return original order if any error occurs
+          console.error(`[Account Page] Error processing order ${order.orderNo}:`, error);
+          return null; // Return null to filter out this order
         }
       }));
+
+      // Filter out null values (orders that don't exist in Redtea Mobile)
+      const validOrders = processedOrders.filter((order): order is Order => order !== null);
+      console.log(`[Account Page] Filtered orders: ${validOrders.length} valid out of ${processedOrders.length} total`);
       
-      // Update state with processed orders
-      setOrders(processedOrders);
-    } catch (err) {
-      console.error('Error in fetchOrders:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch orders');
+      setOrders(validOrders);
+    } catch (error) {
+      console.error('[Account Page] Error fetching orders:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch orders');
     } finally {
       setLoading(false);
     }
@@ -188,6 +187,11 @@ export default function AccountPage() {
       return isInactive(order);
     }
   });
+
+  const handleTopUp = async (order: Order) => {
+    //setSelectedOrder(order);
+    //setShowTopUpModal(true);
+  };
 
   if (status === 'loading') {
     return (
@@ -260,7 +264,10 @@ export default function AccountPage() {
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3 }}>
                 {filteredOrders.map((order) => (
                   <Box key={order.orderNo}>
-                    <EsimCard order={order} onRefresh={fetchOrders} />
+                    <EsimCard 
+                      order={order} 
+                      onTopUp={handleTopUp}
+                    />
                   </Box>
                 ))}
               </Box>
@@ -285,6 +292,16 @@ export default function AccountPage() {
         </Paper>
       </Container>
       <Footer />
+      {selectedOrder && (
+        <TopUpConfirmationModal
+          open={showTopUpModal}
+          onClose={() => {
+            setShowTopUpModal(false);
+            setSelectedOrder(null);
+          }}
+          order={selectedOrder}
+        />
+      )}
     </>
   );
 } 

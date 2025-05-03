@@ -55,12 +55,12 @@ export async function POST(req: Request) {
     // Update order status in database if we have order information
     if (orderNo && data.data?.profiles) {
       for (const profile of data.data.profiles) {
-        await prisma.order.update({
-          where: { orderId: orderNo },
+        await prisma.esimOrderAfterPayment.update({
+          where: { orderNo: orderNo },
           data: {
             esimStatus: profile.esimStatus,
             status: profile.smdpStatus,
-            dataUsage: profile.orderUsage || 0
+            dataRemaining: profile.orderUsage || 0
           }
         });
       }

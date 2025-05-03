@@ -219,10 +219,19 @@ model esimOrderAfterPayment {
   currency      String
   pmId          String   @map("pm_id")
   pmName        String   @map("pm_name")
+  isTopUp       Boolean  @default(false) @map("is_top_up")
+  topUpTransactionId String? @map("top_up_transaction_id")
+  topUpAmount   Decimal? @db.Decimal(10, 2) @map("top_up_amount")
+  topUpDate     DateTime? @map("top_up_date")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   esimProfile   EsimProfile?
 
+  @@index([userId])
+  @@index([packageCode])
+  @@index([orderNo])
+  @@index([status])
+  @@index([isTopUp])
   @@map("esim_order_after_payment")
 }
 

@@ -56,7 +56,11 @@ export default function Providers({ children }: ProvidersProps) {
   });
 
   return (
-    <SessionProvider>
+    <SessionProvider 
+      refetchInterval={5 * 60}
+      refetchOnWindowFocus={true}
+      refetchWhenOffline={false}
+    >
       <CacheProvider value={cache}>
         <ThemeRegistry>
           {children}

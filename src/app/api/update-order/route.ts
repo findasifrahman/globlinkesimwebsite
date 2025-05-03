@@ -14,6 +14,13 @@ export async function POST(request: NextRequest) {
       );
     }
     console.log('got request to update order---:', orderNo, status, dataRemaining, dataUsed, smdpStatus, qrCode);
+    if(!status){
+      console.error('Error updating order: status is required');
+      return NextResponse.json(
+        { error: 'Status is required' },
+        { status: 400 }
+      );
+    }
     // Update the order in the database
     const updatedOrder = await prisma.esimOrderAfterPayment.update({
       where: { orderNo },

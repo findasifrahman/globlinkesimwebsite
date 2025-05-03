@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -43,6 +43,12 @@ export default function Navbar() {
   const [accountAnchor, setAccountAnchor] = useState<null | HTMLElement>(null);
   const router = useRouter();
   const { data: session, status } = useSession();
+
+  // Add debugging logs
+  useEffect(() => {
+    console.log('Navbar Session Status:', status);
+    console.log('Navbar Session Data:', session);
+  }, [status, session]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -110,6 +116,19 @@ export default function Navbar() {
       ))}
     </List>
   );
+
+  // Show loading state while session is being checked
+  if (status === 'loading') {
+    return (
+      <AppBar position="sticky">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Loading...
+          </Typography>
+        </Toolbar>
+      </AppBar>
+    );
+  }
 
   return (
     <AppBar 

@@ -4,7 +4,7 @@ export interface Order {
   status: string;
   createdAt: string;
   updatedAt: string;
-  packageId: string;
+  packageCode: string;
   userId: string;
   paymentOrderNo?: string;
   paymentState?: string;
