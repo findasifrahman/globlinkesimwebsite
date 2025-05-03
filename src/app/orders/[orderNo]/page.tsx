@@ -40,14 +40,14 @@ export default function OrderDetails() {
   const fetchOrder = useCallback(async () => {
     try {
       const response = await fetch(`/api/orders/${orderNo}`, {
-        cache: 'no-store', // Prevent caching
-        next: { revalidate: 0 } // Disable revalidation
+        cache: 'no-store',
+        next: { revalidate: 0 }
       });
       if (!response.ok) {
         throw new Error('Failed to fetch order');
       }
       const data = await response.json();
-      setOrder(data);
+      setOrder(data.order);
     } catch (err) {
       setError(err.message);
     } finally {
