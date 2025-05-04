@@ -297,3 +297,13 @@ model ProcessingQueue {
   @@index([orderNo])
   @@map("processing_queue")
 }
+
+model PackageSyncJob {
+  id                String   @id @default(cuid())
+  status            String   @default("pending") // pending, processing, completed, failed
+  totalPackages     Int
+  processedPackages Int      @default(0)
+  packages          String   // JSON string of packages to process
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

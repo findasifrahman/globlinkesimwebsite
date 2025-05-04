@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+// Mark this route as dynamic
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

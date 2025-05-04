@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     // Generate signature
     const apiSig = md5sum(
       PAYSSION_API_KEY,
-      'alipay_cn', // Using test payment method
+      'payssion_test',//'alipay_cn', // Using test payment method
       amount.toString(),
       currency,
       orderId,
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     const formData = new URLSearchParams();
     formData.append('api_key', PAYSSION_API_KEY);
     formData.append('api_sig', apiSig);
-    formData.append('pm_id', 'alipay_cn');
+    formData.append('pm_id', 'payssion_test');//'alipay_cn');
     formData.append('amount', amount.toString());
     formData.append('currency', currency);
     formData.append('order_id', orderId);

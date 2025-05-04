@@ -46,8 +46,8 @@ export default function Navbar() {
 
   // Add debugging logs
   useEffect(() => {
-    console.log('Navbar Session Status:', status);
-    console.log('Navbar Session Data:', session);
+    //console.log('Navbar Session Status:', status);
+    //console.log('Navbar Session Data:', session);
   }, [status, session]);
 
   const handleDrawerToggle = () => {
