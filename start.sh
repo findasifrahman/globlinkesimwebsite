@@ -7,24 +7,31 @@ export PATH="/usr/local/bin:$PATH"
 start_server() {
     local name=$1
     local command=$2
-    echo "Starting $name server..."
+    local port=$3
+    
+    echo "Starting $name server on port $port..."
     $command &
     local pid=$!
-    sleep 5  # Give it time to start
-    if ps -p $pid > /dev/null; then
-        echo "$name server started successfully (PID: $pid)"
-    else
-        echo "Failed to start $name server"
-        exit 1
-    fi
+    
+    # Wait for the server to start
+    for i in {1..30}; do
+        if nc -z localhost $port; then
+            echo "$name server started successfully (PID: $pid)"
+            return 0
+        fi
+        sleep 1
+    done
+    
+    echo "Failed to start $name server"
+    return 1
 }
 
 # Start the payment webhook server
-start_server "Payment Webhook" "python3 webhook_payment/main.py"
+start_server "Payment Webhook" "python3 webhook_payment/main.py" 3001 || exit 1
 
 # Start the eSIM webhook server
-start_server "eSIM Webhook" "python3 webhook_esim/main.py"
+start_server "eSIM Webhook" "python3 webhook_esim/main.py" 3002 || exit 1
 
 # Start the Next.js server (this will be the main process)
-echo "Starting Next.js server..."
+echo "Starting Next.js server on port 3000..."
 npm run start 
