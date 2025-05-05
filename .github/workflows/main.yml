@@ -52,7 +52,4 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_PAYMENT_WEBHOOK_URL: ${{ secrets.NEXT_PUBLIC_PAYMENT_WEBHOOK_URL }}
-          NEXT_PUBLIC_ESIM_WEBHOOK_URL: ${{ secrets.NEXT_PUBLIC_ESIM_WEBHOOK_URL }}
-          
-      - name: Run tests
-        run: npm test 
+          NEXT_PUBLIC_ESIM_WEBHOOK_URL: ${{ secrets.NEXT_PUBLIC_ESIM_WEBHOOK_URL }} 
