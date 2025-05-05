@@ -15,7 +15,7 @@ start_server() {
     
     # Wait for the server to start
     for i in {1..30}; do
-        if nc -z localhost $port; then
+        if curl -s http://localhost:$port > /dev/null; then
             echo "$name server started successfully (PID: $pid)"
             return 0
         fi
