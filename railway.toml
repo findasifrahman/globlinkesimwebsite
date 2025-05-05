@@ -1,0 +1,16 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm install && npm run build && pip install -r requirements.txt"
+
+[deploy]
+startCommand = "npm run start"
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[deploy.env]
+NODE_ENV = "production"
+NEXT_PUBLIC_API_URL = "https://www.globlinksolution.com"
+NEXT_PUBLIC_PAYMENT_WEBHOOK_URL = "https://www.globlinksolution.com/payssiongloblinkesimwebhhok"
+NEXT_PUBLIC_ESIM_WEBHOOK_URL = "https://www.globlinksolution.com/globlinkesimwebhook" 

@@ -1,0 +1,12 @@
+version: 2
+authtoken: 2vvAQbYpRG24GHbO9hKTWetsnHO_5nHkR2M61rC6J9qGUPg8
+tunnels:
+  nextjs:
+    proto: http
+    addr: 3000
+  payment_webhook:
+    proto: http
+    addr: 3001
+  esim_webhook:
+    proto: http
+    addr: 3002 

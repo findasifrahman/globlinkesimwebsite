@@ -16,7 +16,7 @@ const validateDatabaseUrl = (url: string | undefined) => {
 };
 
 // Initialize Prisma Client with error handling
-const prisma = globalForPrisma.prisma ?? new PrismaClient({
+const prisma = globalForPrisma.prisma || new PrismaClient({
   log: ['error', 'warn'],
   datasources: {
     db: {
