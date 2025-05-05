@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, APIRouter
 import logging
 from databases import Database
 from sqlalchemy import MetaData, Table, Column, String, DateTime, Numeric
@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 # 🚀 Initialize FastAPI app
 app = FastAPI()
+
+# Create a router for webhook endpoints
+webhook_router = APIRouter(prefix="/api/webhooks")
 
 # 🚀 Database URL from Railway
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -63,7 +66,7 @@ async def shutdown():
     logger.info("Database disconnected successfully")
 
 # Payment Webhook Endpoint
-@app.post("/payssiongloblinkesimwebhhok")
+@webhook_router.post("/payment")
 async def payment_hook(request: Request):
     payload = await request.json()
     logger.info(f"📩 Payment Webhook received: {payload}")
@@ -114,7 +117,7 @@ async def payment_hook(request: Request):
         return {"error": str(e)}
 
 # eSIM Webhook Endpoint
-@app.post("/globlinkesimwebhook")
+@webhook_router.post("/esim")
 async def esim_hook(request: Request):
     payload = await request.json()
     esim_events.append(payload)
@@ -122,18 +125,21 @@ async def esim_hook(request: Request):
     return {"status": "ok"}
 
 # Endpoints to view latest events
-@app.get("/payment/last-events")
+@webhook_router.get("/payment/last-events")
 async def get_payment_last_events():
     query = payment_webhook_states.select().order_by(payment_webhook_states.c.created_at.desc()).limit(10)
     events = await database.fetch_all(query)
     return {"events": [dict(event) for event in events]}
 
-@app.get("/esim/last-events")
+@webhook_router.get("/esim/last-events")
 def get_esim_last_events():
     return {"events": esim_events[-10:]}  # return latest 10
 
+# Include the router in the app
+app.include_router(webhook_router)
+
 if __name__ == "__main__":
-    port = int(os.getenv("WEBHOOK_PORT", 3001))
+    port = int(os.getenv("PORT", 3000))  # Use the same port as Next.js
     logger.info(f"Starting combined webhook server on port {port}")
     try:
         uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
