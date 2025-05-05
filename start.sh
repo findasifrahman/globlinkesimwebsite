@@ -26,17 +26,12 @@ start_server() {
     return 1
 }
 
-# Start the webhook server in the background
-cd webhooks
-python3 main.py &
-WEBHOOK_PID=$!
+# Start the webhook server
+start_server "Webhook" "cd webhooks && python3 main.py" 3000 || exit 1
 
 # Start the Next.js app
-cd ..
+echo "Starting Next.js server..."
 npm run start
-
-# If Next.js exits, kill the webhook server
-kill $WEBHOOK_PID
 
 # Start the payment webhook server
 start_server "Payment Webhook" "python3 webhook_payment/main.py" 3001 || exit 1
