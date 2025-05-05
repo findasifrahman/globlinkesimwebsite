@@ -1,9 +1,9 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm install --omit=dev && npm run build && apt-get update && apt-get install -y python3-minimal python3-pip curl && pip3 install --no-warn-script-location -r requirements.txt && chmod +x start.sh"
+buildCommand = "apt-get update && apt-get install -y python3-minimal python3-pip && pip3 install --no-warn-script-location -r webhooks/requirements.txt && npm install --omit=dev && npm run build"
 
 [deploy]
-startCommand = "export PATH=/usr/local/bin:$PATH && ./start.sh"
+startCommand = "chmod +x start.sh && ./start.sh"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
@@ -12,8 +12,6 @@ restartPolicyMaxRetries = 10
 [deploy.env]
 NODE_ENV = "production"
 PORT = "3000"
-PORT_PAYMENT = "3001"
-PORT_ESIM = "3002"
 NEXT_PUBLIC_API_URL = "https://www.globlinksolution.com"
-NEXT_PUBLIC_PAYMENT_WEBHOOK_URL = "https://globlinkesimwebsite-production.up.railway.app/payssiongloblinkesimwebhhok"
-NEXT_PUBLIC_ESIM_WEBHOOK_URL = "https://globlinkesimwebsite-production.up.railway.app/globlinkesimwebhook" 
+NEXT_PUBLIC_PAYMENT_WEBHOOK_URL = "https://your-railway-domain.up.railway.app/payssiongloblinkesimwebhhok"
+NEXT_PUBLIC_ESIM_WEBHOOK_URL = "https://your-railway-domain.up.railway.app/globlinkesimwebhook" 
