@@ -27,17 +27,17 @@ start_server() {
 }
 
 # Start the webhook server
-start_server "Webhook" "cd webhooks && python3 main.py" 3000 || exit 1
+start_server "Webhook" "cd webhooks && PORT=3001 python3 main.py" 3001 || exit 1
 
 # Start the Next.js app
 echo "Starting Next.js server..."
-npm run start
+PORT=3000 npm run start
 
 # Start the payment webhook server
-start_server "Payment Webhook" "python3 webhook_payment/main.py" 3001 || exit 1
+start_server "Payment Webhook" "python3 webhook_payment/main.py" 3002 || exit 1
 
 # Start the eSIM webhook server
-start_server "eSIM Webhook" "python3 webhook_esim/main.py" 3002 || exit 1
+start_server "eSIM Webhook" "python3 webhook_esim/main.py" 3003 || exit 1
 
 # Keep the script running
 wait $NEXT_PID 
