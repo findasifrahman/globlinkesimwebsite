@@ -1,9 +1,9 @@
 [build]
 builder = "nixpacks"
-buildCommand = "apt-get update && apt-get install -y python3-minimal python3-pip && pip3 install --no-warn-script-location -r webhooks/requirements.txt && npm install --omit=dev && npm run build"
+buildCommand = "apt-get update && apt-get install -y python3-minimal python3-pip && pip3 install --no-warn-script-location -r webhooks/requirements.txt && npm install --omit=dev && npm run build && npm install -g pm2"
 
 [deploy]
-startCommand = "chmod +x start.sh && ./start.sh"
+startCommand = "pm2 start ecosystem.config.js && pm2 logs"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
