@@ -11,6 +11,9 @@ restartPolicyMaxRetries = 10
 
 [deploy.env]
 NODE_ENV = "production"
+PORT = "3000"
+PORT_PAYMENT = "3001"
+PORT_ESIM = "3002"
 NEXT_PUBLIC_API_URL = "https://www.globlinksolution.com"
 NEXT_PUBLIC_PAYMENT_WEBHOOK_URL = "https://www.globlinksolution.com/payssiongloblinkesimwebhhok"
 NEXT_PUBLIC_ESIM_WEBHOOK_URL = "https://www.globlinksolution.com/globlinkesimwebhook" 
