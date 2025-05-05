@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 import uvicorn
 import sys
+import asyncio
 
 # 🚀 Configure Logging
 logging.basicConfig(
@@ -56,59 +57,66 @@ esim_events = []
 @app.on_event("startup")
 async def startup():
     logger.info("Starting webhook server...")
-    await database.connect()
-    logger.info("Database connected successfully")
+    try:
+        await database.connect()
+        logger.info("Database connected successfully")
+    except Exception as e:
+        logger.error(f"Failed to connect to database: {str(e)}")
+        raise
 
 @app.on_event("shutdown")
 async def shutdown():
     logger.info("Shutting down webhook server...")
-    await database.disconnect()
-    logger.info("Database disconnected successfully")
+    try:
+        await database.disconnect()
+        logger.info("Database disconnected successfully")
+    except Exception as e:
+        logger.error(f"Error disconnecting from database: {str(e)}")
 
 # Payment Webhook Endpoint
 @webhook_router.post("/payment")
 async def payment_hook(request: Request):
-    payload = await request.json()
-    logger.info(f"📩 Payment Webhook received: {payload}")
-
-    order_id = payload.get("order_id")
-    transaction_id = payload.get("transaction_id")
-    state = payload.get("state")
-    pm_id = payload.get("pm_id")
-    amount = payload.get("amount")
-    currency = payload.get("currency")
-
-    if not order_id:
-        logger.error("Missing order_id in payment webhook payload")
-        return {"error": "order_id missing"}
-
-    now = datetime.utcnow()
-
-    # 🚀 Build UPSERT query
-    upsert_query = insert(payment_webhook_states).values(
-        id=transaction_id,
-        order_id=order_id,
-        status=state,
-        transaction_id=transaction_id,
-        pm_id=pm_id,
-        amount=amount,
-        currency=currency,
-        created_at=now,
-        updated_at=now,
-        user_id=None,
-    ).on_conflict_do_update(
-        index_elements=['id'],
-        set_={
-            "status": state,
-            "updated_at": now,
-            "transaction_id": transaction_id,
-            "amount": amount,
-            "currency": currency,
-            "pm_id": pm_id
-        }
-    )
-
     try:
+        payload = await request.json()
+        logger.info(f"📩 Payment Webhook received: {payload}")
+
+        order_id = payload.get("order_id")
+        transaction_id = payload.get("transaction_id")
+        state = payload.get("state")
+        pm_id = payload.get("pm_id")
+        amount = payload.get("amount")
+        currency = payload.get("currency")
+
+        if not order_id:
+            logger.error("Missing order_id in payment webhook payload")
+            return {"error": "order_id missing"}
+
+        now = datetime.utcnow()
+
+        # 🚀 Build UPSERT query
+        upsert_query = insert(payment_webhook_states).values(
+            id=transaction_id,
+            order_id=order_id,
+            status=state,
+            transaction_id=transaction_id,
+            pm_id=pm_id,
+            amount=amount,
+            currency=currency,
+            created_at=now,
+            updated_at=now,
+            user_id=None,
+        ).on_conflict_do_update(
+            index_elements=['id'],
+            set_={
+                "status": state,
+                "updated_at": now,
+                "transaction_id": transaction_id,
+                "amount": amount,
+                "currency": currency,
+                "pm_id": pm_id
+            }
+        )
+
         await database.execute(upsert_query)
         logger.info(f"Successfully processed payment webhook for order {order_id}")
         return {"status": "ok"}
@@ -119,21 +127,33 @@ async def payment_hook(request: Request):
 # eSIM Webhook Endpoint
 @webhook_router.post("/esim")
 async def esim_hook(request: Request):
-    payload = await request.json()
-    esim_events.append(payload)
-    logger.info(f"📩 eSIM Webhook received: {payload}")
-    return {"status": "ok"}
+    try:
+        payload = await request.json()
+        esim_events.append(payload)
+        logger.info(f"📩 eSIM Webhook received: {payload}")
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error processing eSIM webhook: {str(e)}")
+        return {"error": str(e)}
 
 # Endpoints to view latest events
 @webhook_router.get("/payment/last-events")
 async def get_payment_last_events():
-    query = payment_webhook_states.select().order_by(payment_webhook_states.c.created_at.desc()).limit(10)
-    events = await database.fetch_all(query)
-    return {"events": [dict(event) for event in events]}
+    try:
+        query = payment_webhook_states.select().order_by(payment_webhook_states.c.created_at.desc()).limit(10)
+        events = await database.fetch_all(query)
+        return {"events": [dict(event) for event in events]}
+    except Exception as e:
+        logger.error(f"Error fetching payment events: {str(e)}")
+        return {"error": str(e)}
 
 @webhook_router.get("/esim/last-events")
 def get_esim_last_events():
-    return {"events": esim_events[-10:]}  # return latest 10
+    try:
+        return {"events": esim_events[-10:]}  # return latest 10
+    except Exception as e:
+        logger.error(f"Error fetching eSIM events: {str(e)}")
+        return {"error": str(e)}
 
 # Include the router in the app
 app.include_router(webhook_router)
@@ -142,7 +162,9 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 3000))  # Use the same port as Next.js
     logger.info(f"Starting combined webhook server on port {port}")
     try:
-        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+        config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+        server = uvicorn.Server(config)
+        asyncio.run(server.serve())
     except Exception as e:
         logger.error(f"Failed to start webhook server: {str(e)}")
         sys.exit(1) 
