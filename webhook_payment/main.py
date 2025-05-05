@@ -7,6 +7,15 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import uvicorn
+import sys
+
+# 🚀 Configure Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
 
 # 🚀 Load environment variables from .env.local
 load_dotenv('.env.local')
@@ -14,13 +23,12 @@ load_dotenv('.env.local')
 # 🚀 Initialize FastAPI app
 app = FastAPI()
 
-# 🚀 Configure Logging
-logging.basicConfig(level=logging.INFO)
-
 # 🚀 Database URL from Railway
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
+
+logger.info(f"Connecting to database at {DATABASE_URL}")
 
 # 🚀 Initialize Database
 database = Database(DATABASE_URL)
@@ -45,16 +53,20 @@ payment_webhook_states = Table(
 # 🚀 Start and stop database with app
 @app.on_event("startup")
 async def startup():
+    logger.info("Starting payment webhook server...")
     await database.connect()
+    logger.info("Database connected successfully")
 
 @app.on_event("shutdown")
 async def shutdown():
+    logger.info("Shutting down payment webhook server...")
     await database.disconnect()
+    logger.info("Database disconnected successfully")
 
 @app.post("/payssiongloblinkesimwebhhok")
 async def hook(request: Request):
     payload = await request.json()
-    logging.info(f"📩 Webhook: {payload}")
+    logger.info(f"📩 Webhook received: {payload}")
 
     order_id = payload.get("order_id")
     transaction_id = payload.get("transaction_id")
@@ -64,6 +76,7 @@ async def hook(request: Request):
     currency = payload.get("currency")
 
     if not order_id:
+        logger.error("Missing order_id in webhook payload")
         return {"error": "order_id missing"}
 
     now = datetime.utcnow()
@@ -92,9 +105,13 @@ async def hook(request: Request):
         }
     )
 
-    await database.execute(upsert_query)
-    return {"status": "ok"}
-
+    try:
+        await database.execute(upsert_query)
+        logger.info(f"Successfully processed webhook for order {order_id}")
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error processing webhook: {str(e)}")
+        return {"error": str(e)}
 
 # 🚀 Endpoint to view latest events
 @app.get("/last-events")
@@ -105,4 +122,5 @@ async def get_last_events():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT_PAYMENT", 3001))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    logger.info(f"Starting server on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
