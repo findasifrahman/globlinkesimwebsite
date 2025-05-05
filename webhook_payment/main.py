@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import uvicorn
 
 # 🚀 Load environment variables from .env.local
 load_dotenv('.env.local')
@@ -101,3 +102,7 @@ async def get_last_events():
     query = payment_webhook_states.select().order_by(payment_webhook_states.c.created_at.desc()).limit(10)
     events = await database.fetch_all(query)
     return {"events": [dict(event) for event in events]}
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT_PAYMENT", 3001))
+    uvicorn.run(app, host="0.0.0.0", port=port)

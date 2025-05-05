@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import uvicorn
 
 # 🚀 Load environment variables from .env.local
 load_dotenv('.env.local')
@@ -24,6 +25,7 @@ if not DATABASE_URL:
 # 🚀 Initialize Database
 database = Database(DATABASE_URL)
 latest_events = []  # stores webhook events temporarily
+
 @app.post("/globlinkesimwebhook")
 async def hook(request: Request):
     payload = await request.json()
@@ -31,7 +33,10 @@ async def hook(request: Request):
     logging.info(f"📩 Webhook: {payload}")
     return {"status": "ok"}
 
-    
 @app.get("/last-events")
 def get_last_events():
     return {"events": latest_events[-10:]}  # return latest 10
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT_ESIM", 3002))
+    uvicorn.run(app, host="0.0.0.0", port=port)
