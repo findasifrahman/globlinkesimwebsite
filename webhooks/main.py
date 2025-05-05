@@ -5,7 +5,6 @@ from sqlalchemy import MetaData, Table, Column, String, DateTime, Numeric
 from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime
 import os
-from dotenv import load_dotenv
 import uvicorn
 import sys
 
@@ -16,9 +15,6 @@ logging.basicConfig(
     stream=sys.stdout
 )
 logger = logging.getLogger(__name__)
-
-# 🚀 Load environment variables from .env.local
-load_dotenv('.env.local')
 
 # 🚀 Initialize FastAPI app
 app = FastAPI()
