@@ -137,6 +137,10 @@ def get_esim_last_events():
     return {"events": esim_events[-10:]}  # return latest 10
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 3001))
+    port = int(os.getenv("WEBHOOK_PORT", 3001))
     logger.info(f"Starting combined webhook server on port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") 
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    except Exception as e:
+        logger.error(f"Failed to start webhook server: {str(e)}")
+        sys.exit(1) 
