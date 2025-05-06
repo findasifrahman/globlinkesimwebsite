@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { QueueProcessor } from '@/lib/queueProcessor';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

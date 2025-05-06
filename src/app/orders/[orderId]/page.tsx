@@ -23,7 +23,7 @@ import { Order } from '@/types/order';
 import { formatDataSize, formatDate} from '@/lib/utils';
 
 export default function OrderDetails() {
-  const { orderNo } = useParams();
+  const { orderId } = useParams();
   const router = useRouter();
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
@@ -33,11 +33,11 @@ export default function OrderDetails() {
   const [processingTime, setProcessingTime] = useState<number>(0);
 
   const fetchOrder = useCallback(async () => {
-    if (!orderNo) return;
+    if (!orderId) return;
     
     try {
       setLoading(true);
-      const response = await fetch(`/api/orders/${orderNo}/details`, {
+      const response = await fetch(`/api/orders/${orderId}/details`, {
         cache: 'no-store',
         next: { revalidate: 0 }
       });
@@ -61,14 +61,14 @@ export default function OrderDetails() {
     } finally {
       setLoading(false);
     }
-  }, [orderNo]);
+  }, [orderId]);
 
   // Initial fetch when component mounts
   useEffect(() => {
-    if (orderNo && session?.user) {
+    if (orderId && session?.user) {
       fetchOrder();
     }
-  }, [orderNo, session?.user, fetchOrder]);
+  }, [orderId, session?.user, fetchOrder]);
 
   // Handle payment status from URL
   useEffect(() => {
@@ -88,9 +88,9 @@ export default function OrderDetails() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/auth/signin?callbackUrl=/orders/' + orderNo);
+      router.push('/auth/signin?callbackUrl=/orders/' + orderId);
     }
-  }, [status, router, orderNo]);
+  }, [status, router, orderId]);
 
   // Poll for order status if it's in processing state
   useEffect(() => {

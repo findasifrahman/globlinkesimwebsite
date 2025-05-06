@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { CircularProgress, Typography, Box, Alert, Button } from '@mui/material';
 
 export default function PaymentSuccess() {
-  const { orderId } = useParams();
+  const { orderNo } = useParams();
   const router = useRouter();
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +16,7 @@ export default function PaymentSuccess() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/esimStatus/${orderId}/status`);
+        const response = await fetch(`/api/orders/${orderNo}/status`);
         const data = await response.json();
 
         if (data.status === 'COMPLETED') {
@@ -33,14 +33,14 @@ export default function PaymentSuccess() {
           setPollCount(prev => prev + 1);
           if (pollCount >= MAX_POLLS) {
             // After 1 minute, redirect to order page with processing status
-            router.push(`/orders/${orderId}?status=processing`);
+            router.push(`/orders/${orderNo}?status=processing`);
           }
         }
       } catch (error) {
         console.error('Error checking status:', error);
         setPollCount(prev => prev + 1);
         if (pollCount >= MAX_POLLS) {
-          router.push(`/orders/${orderId}?status=processing`);
+          router.push(`/orders/${orderNo}?status=processing`);
         }
       }
     };
@@ -51,7 +51,7 @@ export default function PaymentSuccess() {
     // Check status every 5 seconds
     const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
-  }, [orderId, router, pollCount]);
+  }, [orderNo, router, pollCount]);
 
   return (
     <Box sx={{ 
