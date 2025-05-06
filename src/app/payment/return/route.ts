@@ -102,8 +102,8 @@ export async function GET(req: Request) {
                 paymentState: 'completed',
                 finalAmountPaid: Number(paymentState.amount),
                 paidAmount: paymentState.amount,
-                transactionId: paymentState.transactionId,
-                currency: paymentState.currency,
+                transactionId: paymentState.transactionId || '',
+                currency: paymentState.currency || 'USD',
                 pmId: paymentState.pmId || '',
                 pmName: 'payssion_test',
                 discountCode: updatedOrderBeforePayment.discountCode,
@@ -115,9 +115,9 @@ export async function GET(req: Request) {
             }
 
             // 3. Create processing queue entry
-            await prisma.processingQueue.create({
+            await tx.processingQueue.create({
               data: {
-                orderNo: "PRPCESSING-" + paymentOrderNo,
+                orderNo: esimOrderNo, // Use the same orderNo as esimOrderAfterPayment
                 type: 'ESIM_ORDER_PROCESSING',
                 status: 'PENDING',
                 priority: 1,
