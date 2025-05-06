@@ -20,7 +20,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Order } from '@/types/order';
 
-import { formatDataSize, formatDate, formatCurrency } from '@/lib/utils';
+import { formatDataSize, formatDate} from '@/lib/utils';
 
 export default function OrderDetails() {
   const { orderNo } = useParams();
