@@ -47,9 +47,15 @@ export default async function middleware(request: NextRequestWithAuth) {
 
   const token = await getToken({ req: request });
   
-  // If user is not logged in, redirect to login page
+  // If user is not logged in and trying to access protected route, redirect to login
   if (!token) {
-    return NextResponse.redirect(new URL('/auth/signin', request.url));
+    const callbackUrl = encodeURIComponent(request.url);
+    return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${callbackUrl}`, request.url));
+  }
+
+  // If user is logged in and trying to access auth pages, redirect to home
+  if (token && (path.startsWith('/auth/') || path === '/register')) {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   // Check if email is verified

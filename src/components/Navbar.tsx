@@ -86,6 +86,12 @@ export default function Navbar() {
       esimSection.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  const handleHomeClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push('/');
+  };
+
   const menuItems = [
     { label: 'Quick Guide', href: '/guide' },
     { label: 'Install eSIM', onClick: handleInstallEsimClick },
@@ -153,8 +159,8 @@ export default function Navbar() {
 
         <Typography
           variant="h6"
-          component={Link}
-          href="/"
+          component="div"
+          onClick={handleHomeClick}
           sx={{ 
             flexGrow: isMobile ? 0 : 1, 
             fontWeight: 'bold',
@@ -163,6 +169,7 @@ export default function Navbar() {
             display: 'flex',
             alignItems: 'center',
             gap: 1,
+            cursor: 'pointer',
             '&:hover': {
               color: alpha('#fff', 0.8),
             }
