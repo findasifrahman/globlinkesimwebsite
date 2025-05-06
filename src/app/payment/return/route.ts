@@ -86,6 +86,7 @@ export async function GET(req: Request) {
         // Then create the esimOrderAfterPayment record
         const orderAfterPayment = await prisma.esimOrderAfterPayment.create({
           data: {
+            orderId: orderId,
             paymentOrderNo: orderId,
             orderNo:"PRPCESSING-" + orderId,
             userId: session.user.id,
