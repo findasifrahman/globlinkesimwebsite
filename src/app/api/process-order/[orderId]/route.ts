@@ -338,7 +338,7 @@ async function createesimorder(packageCode: string, count: number, price: number
         console.log(`Attempt ${retryCount + 1} result from esim order after payment in createesimorder--`, result);
 
         if (response.ok && result.success) {
-          // Update order with esim order number from API response
+          // Update both esimOrderAfterPayment and processingQueue in a transaction
           await prisma.$transaction([
             prisma.esimOrderAfterPayment.update({
               where: { paymentOrderNo: paymentOrderNo },
@@ -353,6 +353,14 @@ async function createesimorder(packageCode: string, count: number, price: number
                 orderNo: result.obj.orderNo,
                 status: 'PROCESSING',
               },
+            }),
+            prisma.processingQueue.update({
+              where: { orderNo: "PRPCESSING-" + paymentOrderNo },
+              data: {
+                orderNo: result.obj.orderNo,
+                status: 'PROCESSING',
+                updatedAt: new Date()
+              }
             })
           ]);
           
@@ -373,28 +381,48 @@ async function createesimorder(packageCode: string, count: number, price: number
         }
 
         // If we've exhausted all retries, mark as failed
-        await prisma.esimOrderAfterPayment.update({
-          where: { paymentOrderNo: paymentOrderNo },
-          data: { 
-            orderNo: result.obj?.orderNo || "FAILED-" + paymentOrderNo,
-            status: 'FAILED',
-            smdpStatus: lastError || 'Failed to create order with provider after multiple attempts'
-          },
-        });
-        
-        throw new Error(lastError || 'Failed to create order with provider after multiple attempts');
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : 'Unknown error occurred';
-        if (retryCount === MAX_RETRIES - 1) {
-          // Last retry failed, mark as failed
-          await prisma.esimOrderAfterPayment.update({
+        await prisma.$transaction([
+          prisma.esimOrderAfterPayment.update({
             where: { paymentOrderNo: paymentOrderNo },
             data: { 
               orderNo: "FAILED-" + paymentOrderNo,
               status: 'FAILED',
               smdpStatus: lastError
             },
-          });
+          }),
+          prisma.processingQueue.update({
+            where: { orderNo: "PRPCESSING-" + paymentOrderNo },
+            data: {
+              status: 'FAILED',
+              error: lastError,
+              updatedAt: new Date()
+            }
+          })
+        ]);
+        
+        throw new Error(lastError || 'Failed to create order with provider after multiple attempts');
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : 'Unknown error occurred';
+        if (retryCount === MAX_RETRIES - 1) {
+          // Last retry failed, mark as failed
+          await prisma.$transaction([
+            prisma.esimOrderAfterPayment.update({
+              where: { paymentOrderNo: paymentOrderNo },
+              data: { 
+                orderNo: "FAILED-" + paymentOrderNo,
+                status: 'FAILED',
+                smdpStatus: lastError
+              },
+            }),
+            prisma.processingQueue.update({
+              where: { orderNo: "PRPCESSING-" + paymentOrderNo },
+              data: {
+                status: 'FAILED',
+                error: lastError,
+                updatedAt: new Date()
+              }
+            })
+          ]);
           throw error;
         }
         retryCount++;

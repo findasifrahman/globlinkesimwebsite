@@ -11,9 +11,9 @@ const PAYSSION_RETURN_URL = process.env.PAYSSION_RETURN_GLOBLINK_URL;
 const PAYSSION_WEBHOOK_URL = process.env.PAYSSION_WEBHOOK_RAILWAY_URL;
 
 export async function POST(req: Request) {
-  console.log('PAYSSION_API_KEY', PAYSSION_API_KEY);
-  console.log('PAYSSION_SECRET_KEY', PAYSSION_SECRET_KEY);
-  console.log('PAYSSION_RETURN_URL', PAYSSION_RETURN_URL);
+  //console.log('PAYSSION_API_KEY', PAYSSION_API_KEY);
+  //console.log('PAYSSION_SECRET_KEY', PAYSSION_SECRET_KEY);
+  //console.log('PAYSSION_RETURN_URL', PAYSSION_RETURN_URL);
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {

@@ -58,23 +58,31 @@ export async function GET(req: Request) {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // First, update the esimOrderBeforePayment with payment details
-        // payment order_id and esim order_id are not same esim_order_id = "orderNo" and payment order_id = "paymentOrderNo"
-        // transaction_id is same for both esim and payment
-        const updatedOrderBeforePayment = await prisma.esimOrderBeforePayment.update({
-          where: {
-            paymentOrderNo: orderId,
-          },
-          data: {
-            transactionId: paymentState.transactionId,
-            paymentState: 'completed',
-            currency: paymentState.currency,
-            updatedAt: new Date(),
-          },
-          include: {
-            package: true,
-          },
-        });
+        // Validate required payment state fields
+        if (!paymentState.transactionId || !paymentState.currency || !paymentState.amount || !paymentState.pmId) {
+          console.error("Missing required payment state fields:", paymentState);
+          await sendCreateEsimFailedEmail(session.user.email, orderId);
+          return NextResponse.json({ error: 'Invalid payment state' }, { status: 400 });
+        }
+
+        try {
+          // Perform all database operations in a single transaction
+          const result = await prisma.$transaction(async (tx) => {
+            // 1. Update esimOrderBeforePayment
+            const updatedOrderBeforePayment = await tx.esimOrderBeforePayment.update({
+              where: {
+                paymentOrderNo: orderId,
+              },
+              data: {
+                transactionId: paymentState.transactionId,
+                paymentState: 'completed',
+                currency: paymentState.currency,
+                updatedAt: new Date(),
+              },
+              include: {
+                package: true,
+              },
+            });
 
         if (!updatedOrderBeforePayment) {
           console.log("Failed to update order before payment--", updatedOrderBeforePayment);
@@ -97,7 +105,7 @@ export async function GET(req: Request) {
             transactionId: paymentState.transactionId,
             currency: paymentState.currency,
             pmId: paymentState.pmId,
-            pmName: 'alipay_cn', // You might want to make this dynamic based on the payment method
+            pmName: 'payssion_tes', // You might want to make this dynamic based on the payment method
             discountCode: updatedOrderBeforePayment.discountCode,
           },
         });
@@ -109,25 +117,37 @@ export async function GET(req: Request) {
         }
         console.log("Successfully created order after payment--", orderAfterPayment);
 
-        // new- queus the esim order processing
-                // 3. Queue the eSIM processing job
-                await prisma.processingQueue.create({
-                  data: {
-                    orderNo: orderId,
-                    type: 'ESIM_ORDER',
-                    status: 'PENDING',
-                    retryCount: 0,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                  }
-                });
+            // 3. Create processing queue entry
+            const queueItem = await tx.processingQueue.create({
+              data: {
+                orderNo: "PRPCESSING-" + orderId,
+                type: 'ESIM_ORDER',
+                status: 'PENDING',
+                retryCount: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              }
+            });
+
+            if (!queueItem) {
+              throw new Error('Failed to create processing queue entry');
+            }
+
+            return { updatedOrderBeforePayment, orderAfterPayment, queueItem };
+          });
+
+          console.log("Successfully processed payment and created order:", result);
 
               // 4. Send immediate confirmation email
               await sendPaymentConfirmationEmail(session.user.email, orderId);
                     // 5. Redirect to processing page
           return NextResponse.redirect(new URL(`/payment-success/${orderId}`, baseUrl));
-       
-     
+
+        } catch (error) {
+          console.error("Transaction failed:", error);
+          await sendCreateEsimFailedEmail(session.user.email, orderId);
+          throw error; // Re-throw to be caught by outer try-catch
+        }
       } else {
         // Redirect to failure page using the same base URL
         console.log("payment state is failed or pending--", orderId);
