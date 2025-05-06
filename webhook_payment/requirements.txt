@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-databases
-asyncpg
-sqlalchemy
-pydantic
-python-dotenv

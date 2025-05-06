@@ -9,10 +9,7 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "test": "jest",
-    "db:migrate": "prisma migrate deploy",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:webhook:payment\" \"npm run dev:webhook:esim\"",
-    "dev:webhook:payment": "uvicorn webhook_payment/main:app --reload --port 3001",
-    "dev:webhook:esim": "uvicorn webhook_esim/main:app --reload --port 3002"
+    "db:migrate": "prisma migrate deploy"
   },
   "author": "",
   "license": "ISC",
@@ -33,7 +30,6 @@
     "@types/nodemailer": "^6.4.17",
     "bcryptjs": "^3.0.2",
     "bufferutil": "^4.0.9",
-    "concurrently": "^8.2.2",
     "country-flag-icons": "^1.5.18",
     "critters": "^0.0.25",
     "dotenv": "^16.5.0",

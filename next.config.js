@@ -12,12 +12,12 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000','https://ee5c-103-106-201-49.ngrok-free.app', '*.vercel.app', 'www.globlinksolution.com'],
+      allowedOrigins: ['localhost:3000','https://ee5c-103-106-201-49.ngrok-free.app', '*.railway.app', 'www.globlinksolution.com'],
     },
     serverComponentsExternalPackages: ['@prisma/client'],
   },
   images: {
-    domains: ['localhost', 'www.globlinksolution.com', 'p.qrsim.net'],
+    domains: ['localhost', '*.railway.app', 'www.globlinksolution.com', 'p.qrsim.net'],
   },
   // Ensure proper handling of static files
   webpack: (config) => {
