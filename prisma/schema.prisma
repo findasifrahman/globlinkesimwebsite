@@ -300,6 +300,7 @@ model ProcessingQueue {
   updatedAt     DateTime @updatedAt
   order         esimOrderAfterPayment @relation(fields: [orderNo], references: [orderNo])
 
+  @@unique([orderNo, type])
   @@index([orderNo])
   @@index([status, nextAttempt]) // For efficient queue processing
   @@map("processing_queue")
