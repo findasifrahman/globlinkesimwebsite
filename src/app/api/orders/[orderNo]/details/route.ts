@@ -18,10 +18,13 @@ export async function GET(
       return new NextResponse('Order number is required', { status: 400 });
     }
 
-    // Single database query to fetch order with all related data
-    const order = await prisma.esimOrderAfterPayment.findUnique({
+    // Try to find the order by either orderNo or paymentOrderNo
+    const order = await prisma.esimOrderAfterPayment.findFirst({
       where: {
-        orderNo: orderNo,
+        OR: [
+          { orderNo: orderNo },
+          { paymentOrderNo: orderNo }
+        ],
         userId: session.user.id
       },
       include: {

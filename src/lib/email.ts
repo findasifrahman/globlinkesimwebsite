@@ -107,7 +107,7 @@ interface EsimProfile {
   esimStatus: string;
   dataRemaining: number;
   dataUsed: number;
-  expiryDate: string;
+  expiryDate: string | null;
   daysRemaining: number;
   packageCode: string;
   amount: number;
@@ -136,8 +136,8 @@ export async function sendEsimEmail(
           <p><strong>Amount:</strong> ${esimProfile.amount} ${esimProfile.currency}</p>
           ${esimProfile.discountCode ? `
             <p><strong>Discount Code:</strong> ${esimProfile.discountCode}</p>
-            <p><strong>Discount Applied:</strong> ${esimProfile.discountPercentage}%</p>
-            <p><strong>Original Amount:</strong> ${(esimProfile.amount / (1 - esimProfile.discountPercentage / 100)).toFixed(2)} ${esimProfile.currency}</p>
+            <p><strong>Discount Applied:</strong> ${esimProfile.discountPercentage || 0}%</p>
+            <p><strong>Original Amount:</strong> ${(esimProfile.amount / (1 - (esimProfile.discountPercentage || 0) / 100)).toFixed(2)} ${esimProfile.currency}</p>
           ` : ''}
         </div>
 
@@ -170,7 +170,7 @@ export async function sendEsimEmail(
           <p><strong>Status:</strong> ${esimProfile.esimStatus}</p>
           <p><strong>Data Remaining:</strong> ${esimProfile.dataRemaining/1024/1024} MB</p>
           <p><strong>Data Used:</strong> ${esimProfile.dataUsed} MB</p>
-          <p><strong>Expiry Date:</strong> ${new Date(esimProfile.expiryDate).toLocaleDateString()}</p>
+          <p><strong>Expiry Date:</strong> ${new Date(esimProfile.expiryDate || '').toLocaleDateString()}</p>
           <p><strong>Days Remaining:</strong> ${esimProfile.daysRemaining}</p>
         </div>
 

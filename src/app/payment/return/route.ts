@@ -115,22 +115,17 @@ export async function GET(req: Request) {
             }
 
             // 3. Create processing queue entry
-            const queueItem = await tx.processingQueue.create({
+            await prisma.processingQueue.create({
               data: {
-                orderNo: esimOrderNo,
+                orderNo: "PRPCESSING-" + paymentOrderNo,
                 type: 'ESIM_ORDER_PROCESSING',
                 status: 'PENDING',
-                retryCount: 0,
-                createdAt: new Date(),
-                updatedAt: new Date()
-              }
+                priority: 1,
+                nextAttempt: new Date(),
+              },
             });
 
-            if (!queueItem) {
-              throw new Error('Failed to create processing queue entry');
-            }
-
-            return { updatedOrderBeforePayment, orderAfterPayment, queueItem };
+            return { updatedOrderBeforePayment, orderAfterPayment };
           });
 
           console.log("Successfully processed payment and created order:", result);

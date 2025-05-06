@@ -52,20 +52,25 @@ export async function POST(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
+    // Ensure required fields are present
+    if (!order.packageCode || !order.transactionId) {
+      throw new Error('Missing required order fields');
+    }
+
     // Create eSIM order
     const esimOrder = await createesimorder(
       order.packageCode,
       1,
-      order.finalAmountPaid,
+      order.finalAmountPaid ?? 0,
       order.transactionId,
-      order.paymentOrderNo || order.orderNo
+      order.paymentOrderNo ?? order.orderNo
     );
 
     // Check if the response indicates success
     const responseData = await esimOrder.json();
     if (!responseData.success) {
       if (session?.user?.email) {
-        await sendCreateEsimFailedEmail(session.user.email, order.paymentOrderNo || order.orderNo);
+        await sendCreateEsimFailedEmail(session.user.email, order.paymentOrderNo ?? order.orderNo);
       }
       return NextResponse.json({ 
         success: false, 
@@ -118,9 +123,9 @@ export async function GET(
     // If order is still processing, check Redtea API
     if (order.status === 'PROCESSING') {
       const { webhook_esimProfile } = await pollForOrderStatus(
-        order.paymentOrderNo || order.orderNo,
-        order.paymentOrderNo || order.orderNo,
-        order.transactionId
+        order.paymentOrderNo ?? order.orderNo,
+        order.paymentOrderNo ?? order.orderNo,
+        order.transactionId ?? ''
       );
 
       if (webhook_esimProfile) {
@@ -129,7 +134,7 @@ export async function GET(
 
         if (!esimProfile) {
           if (session?.user?.email) {
-            await sendCreateEsimFailedEmail(session.user.email, order.paymentOrderNo || order.orderNo);
+            await sendCreateEsimFailedEmail(session.user.email, order.paymentOrderNo ?? order.orderNo);
           }
           return NextResponse.json({ 
             status: 'FAILED',
@@ -168,6 +173,10 @@ export async function GET(
           }
         });
 
+        if (!updatedOrder) {
+          throw new Error('Failed to fetch updated order');
+        }
+
         // Get user email before sending
         const user = await prisma.user.findUnique({
           where: { id: order.userId },
@@ -179,19 +188,19 @@ export async function GET(
         }
 
         // Send eSIM email
-        await sendEsimEmail(user.email, order.paymentOrderNo || order.orderNo, {
+        await sendEsimEmail(user.email, order.paymentOrderNo ?? order.orderNo, {
           ...esimProfile,
           packageCode: order.packageCode,
-          amount: order.finalAmountPaid,
-          currency: order.currency,
-          discountCode: order.discountCode,
+          amount: order.finalAmountPaid ?? 0,
+          currency: order.currency ?? 'USD',
+          discountCode: order.discountCode ?? undefined,
         });
 
         // Update processing queue using id
         const queueItem = await prisma.processingQueue.findFirst({
           where: { 
             OR: [
-              { orderNo: order.paymentOrderNo },
+              { orderNo: order.paymentOrderNo ?? '' },
               { orderNo: order.orderNo }
             ]
           }
@@ -216,7 +225,7 @@ export async function GET(
         const queueItem = await prisma.processingQueue.findFirst({
           where: { 
             OR: [
-              { orderNo: order.paymentOrderNo },
+              { orderNo: order.paymentOrderNo ?? '' },
               { orderNo: order.orderNo }
             ]
           }
@@ -275,11 +284,11 @@ export async function GET(
   }
 }
 
-async function createesimorder(packageCode: string, count: number, price: number, transactionId: string, paymentOrderNo: string): Promise<NextResponse> {
+export async function createesimorder(packageCode: string, count: number, price: number, transactionId: string, paymentOrderNo: string): Promise<NextResponse> {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 5000; // 5 seconds between retries
   let retryCount = 0;
-  let lastError = null;
+  let lastError: string | null = null;
 
   try {
     // Check if environment variables are set
@@ -338,6 +347,15 @@ async function createesimorder(packageCode: string, count: number, price: number
         console.log(`Attempt ${retryCount + 1} result from esim order after payment in createesimorder--`, result);
 
         if (response.ok && result.success) {
+          // Find the processing queue item first
+          const queueItem = await prisma.processingQueue.findFirst({
+            where: { orderNo: "PRPCESSING-" + paymentOrderNo }
+          });
+
+          if (!queueItem) {
+            throw new Error('Processing queue item not found');
+          }
+
           // Update both esimOrderAfterPayment and processingQueue in a transaction
           await prisma.$transaction([
             prisma.esimOrderAfterPayment.update({
@@ -355,7 +373,7 @@ async function createesimorder(packageCode: string, count: number, price: number
               },
             }),
             prisma.processingQueue.update({
-              where: { orderNo: "PRPCESSING-" + paymentOrderNo },
+              where: { id: queueItem.id },
               data: {
                 orderNo: result.obj.orderNo,
                 status: 'PROCESSING',
@@ -380,6 +398,15 @@ async function createesimorder(packageCode: string, count: number, price: number
           continue;
         }
 
+        // Find the processing queue item
+        const queueItem = await prisma.processingQueue.findFirst({
+          where: { orderNo: "PRPCESSING-" + paymentOrderNo }
+        });
+
+        if (!queueItem) {
+          throw new Error('Processing queue item not found');
+        }
+
         // If we've exhausted all retries, mark as failed
         await prisma.$transaction([
           prisma.esimOrderAfterPayment.update({
@@ -391,7 +418,7 @@ async function createesimorder(packageCode: string, count: number, price: number
             },
           }),
           prisma.processingQueue.update({
-            where: { orderNo: "PRPCESSING-" + paymentOrderNo },
+            where: { id: queueItem.id },
             data: {
               status: 'FAILED',
               error: lastError,
@@ -404,6 +431,15 @@ async function createesimorder(packageCode: string, count: number, price: number
       } catch (error) {
         lastError = error instanceof Error ? error.message : 'Unknown error occurred';
         if (retryCount === MAX_RETRIES - 1) {
+          // Find the processing queue item
+          const queueItem = await prisma.processingQueue.findFirst({
+            where: { orderNo: "PRPCESSING-" + paymentOrderNo }
+          });
+
+          if (!queueItem) {
+            throw new Error('Processing queue item not found');
+          }
+
           // Last retry failed, mark as failed
           await prisma.$transaction([
             prisma.esimOrderAfterPayment.update({
@@ -415,7 +451,7 @@ async function createesimorder(packageCode: string, count: number, price: number
               },
             }),
             prisma.processingQueue.update({
-              where: { orderNo: "PRPCESSING-" + paymentOrderNo },
+              where: { id: queueItem.id },
               data: {
                 status: 'FAILED',
                 error: lastError,

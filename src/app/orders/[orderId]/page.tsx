@@ -197,7 +197,7 @@ export default function OrderDetails() {
 
         <Grid container spacing={3}>
           {/* Order Information */}
-          <Grid component="div" item xs={12} md={6} sx={{ display: 'flex' }}>
+          <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
             <Card sx={{ width: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Order Information</Typography>
@@ -217,7 +217,7 @@ export default function OrderDetails() {
 
           {/* eSIM Details */}
           {order.status === 'GOT_RESOURCE' && (
-            <Grid component="div" item xs={12} md={6} sx={{ display: 'flex' }}>
+            <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
               <Card sx={{ width: '100%' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>eSIM Details</Typography>
@@ -235,7 +235,7 @@ export default function OrderDetails() {
 
           {/* QR Code */}
           {order.qrCode && (
-            <Grid component="div" item xs={12} sx={{ display: 'flex' }}>
+            <Grid item xs={12} sx={{ display: 'flex' }}>
               <Paper elevation={3} sx={{ p: 3, textAlign: 'center', width: '100%' }}>
                 <Typography variant="h6" gutterBottom>eSIM QR Code</Typography>
                 <Box sx={{ 

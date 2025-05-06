@@ -1,292 +1,266 @@
-import { prisma } from './prisma';
-import { sendCreateEsimFailedEmail } from '@/lib/email';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+import { sendCreateEsimFailedEmail, sendEsimEmail } from '@/lib/email';
+import { queryEsimProfile } from '@/lib/esim';
+import { createesimorder } from '@/app/api/process-order/[orderId]/route';
+import { EsimProfile } from '@/types/esim';
 
-export type QueueItem = {
+interface QueueItem {
+  id: string;
   orderNo: string;
   type: string;
-  priority?: number;
-};
+  status: string;
+  error?: string | null;
+  errorDetails?: Prisma.JsonValue;
+  retryCount: number;
+  lastAttempt?: Date | null;
+  nextAttempt?: Date | null;
+  maxRetries: number;
+  priority: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-export type QueueError = {
+interface QueueError {
   message: string;
   code?: string;
-  details?: any;
-};
+}
 
 export class QueueProcessor {
   private static instance: QueueProcessor;
   private isProcessing: boolean = false;
-  private readonly MAX_PROCESSING_TIME = 30 * 60 * 1000; // 30 minutes in milliseconds
+  private processingInterval: NodeJS.Timeout | null = null;
 
   private constructor() {}
 
-  static getInstance(): QueueProcessor {
+  public static getInstance(): QueueProcessor {
     if (!QueueProcessor.instance) {
       QueueProcessor.instance = new QueueProcessor();
     }
     return QueueProcessor.instance;
   }
 
-  async addToQueue(item: QueueItem): Promise<void> {
+  public async addToQueue(type: string, orderNo: string): Promise<void> {
     await prisma.processingQueue.create({
       data: {
-        orderNo: item.orderNo,
-        type: item.type,
+        type,
+        orderNo,
         status: 'PENDING',
-        priority: item.priority || 0,
+        retryCount: 0,
+        lastAttempt: null,
         nextAttempt: new Date(),
+        maxRetries: 5,
+        priority: 0,
+        error: null,
+        errorDetails: Prisma.JsonNull
       },
     });
   }
 
-  async processQueueItems(): Promise<void> {
-    if (this.isProcessing) return;
-    this.isProcessing = true;
-
+  public async processEsimOrder(item: QueueItem): Promise<void> {
     try {
-      // Get items that are ready to be processed
-      const items = await prisma.processingQueue.findMany({
-        where: {
-          status: 'PENDING',
-          nextAttempt: {
-            lte: new Date(),
-          },
-          retryCount: {
-            lt: 5,
-          },
-          createdAt: {
-            gte: new Date(Date.now() - this.MAX_PROCESSING_TIME),
-          },
-        },
-        orderBy: [
-          { priority: 'desc' },
-          { createdAt: 'asc' },
-        ],
-        take: 5,
+      // Fetch order details
+      const order = await prisma.esimOrderAfterPayment.findUnique({
+        where: { orderNo: item.orderNo },
+        include: {
+          package: true,
+          user: true
+        }
       });
 
-      for (const item of items) {
-        await this.processItem(item);
+      if (!order) {
+        throw new Error('Order not found');
       }
 
-      // Cleanup old items
-      await this.cleanupOldItems();
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-
-  private async processItem(item: any): Promise<void> {
-    try {
-      // Check if item has been processing too long
-      if (Date.now() - item.createdAt.getTime() > this.MAX_PROCESSING_TIME) {
-        await this.handleTimeout(item);
+      if (order.status === 'COMPLETED') {
+        console.log('Order already completed:', order.orderNo);
         return;
       }
 
-      // Mark as processing
-      await prisma.processingQueue.update({
-        where: { id: item.id },
-        data: {
-          status: 'PROCESSING',
-          lastAttempt: new Date(),
-        },
+      // Update order status to processing
+      await prisma.esimOrderAfterPayment.update({
+        where: { orderNo: order.orderNo },
+        data: { status: 'PROCESSING' }
       });
 
-      // Process based on type
-      switch (item.type) {
-        case 'ESIM_ORDER_PROCESSING':
-          await this.processEsimOrder(item);
-          break;
-        default:
-          throw new Error(`Unknown queue item type: ${item.type}`);
+      // Create eSIM order
+      const response = await createesimorder(
+        order.packageCode,
+        1,
+        order.finalAmountPaid || 0,
+        order.transactionId || '',
+        order.paymentOrderNo || order.orderNo
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to create eSIM order');
       }
 
-      // Mark as completed
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create eSIM order');
+      }
+
+      // Update order with new order number
+      await prisma.esimOrderAfterPayment.update({
+        where: { orderNo: order.orderNo },
+        data: {
+          orderNo: result.obj.orderNo,
+          status: 'PROCESSING'
+        }
+      });
+
+      // Poll for order status
+      const esimProfile = await this.pollForOrderStatus(result.obj.orderNo);
+      if (!esimProfile) {
+        throw new Error('Failed to get eSIM profile');
+      }
+
+      // Update order with eSIM details
+      await prisma.esimOrderAfterPayment.update({
+        where: { orderNo: result.obj.orderNo },
+        data: {
+          status: 'COMPLETED',
+          esimStatus: esimProfile.esimStatus,
+          smdpStatus: esimProfile.smdpStatus,
+          dataRemaining: esimProfile.dataRemaining,
+          dataUsed: esimProfile.dataUsed,
+          expiryDate: esimProfile.expiryDate ? new Date(esimProfile.expiryDate) : null,
+          daysRemaining: esimProfile.daysRemaining,
+          qrCode: esimProfile.qrCode,
+          iccid: esimProfile.iccid
+        }
+      });
+
+      // Send email with eSIM details
+      if (order.user?.email) {
+        await sendEsimEmail(
+          order.user.email,
+          result.obj.orderNo,
+          {
+            ...esimProfile,
+            packageCode: order.packageCode,
+            amount: order.finalAmountPaid || 0,
+            currency: order.currency || 'USD',
+            discountCode: order.discountCode || undefined
+          }
+        );
+      }
+
+      // Mark queue item as completed
       await prisma.processingQueue.update({
         where: { id: item.id },
         data: {
           status: 'COMPLETED',
-          updatedAt: new Date(),
-        },
+          updatedAt: new Date()
+        }
       });
+
     } catch (error) {
-      await this.handleError(item, error);
-    }
-  }
-
-  private async handleError(item: any, error: any): Promise<void> {
-    const errorDetails: QueueError = {
-      message: error.message,
-      code: error.code,
-      details: error,
-    };
-
-    const retryCount = item.retryCount + 1;
-    const nextAttempt = this.calculateNextAttempt(retryCount);
-    const isFinalAttempt = retryCount >= item.maxRetries;
-
-    // Get order and user details
-    const order = await prisma.esimOrderAfterPayment.findUnique({
-      where: { orderNo: item.orderNo },
-      include: {
-        user: true,
-      },
-    });
-
-    if (order?.user?.email) {
-      if (isFinalAttempt) {
-        // Send final failure email with support contact
-        await sendCreateEsimFailedEmail(order.user.email, {
-          orderNo: item.orderNo,
-          error: error.message,
-          supportEmail: 'globlinksolution@gmail.com',
-          message: 'We were unable to create your eSIM after multiple attempts. Please contact our support team for assistance.',
-        });
-      } else {
-        // Send retry notification
-        await sendCreateEsimFailedEmail(order.user.email, {
-          orderNo: item.orderNo,
-          error: error.message,
-          message: `We're still working on creating your eSIM. Please wait 5-30 minutes. If you don't receive your eSIM by then, please contact our support team at globlinksolution@gmail.com`,
-        });
-      }
-    }
-
-    await prisma.processingQueue.update({
-      where: { id: item.id },
-      data: {
-        status: isFinalAttempt ? 'FAILED' : 'PENDING',
-        error: error.message,
-        errorDetails: errorDetails,
-        retryCount,
-        nextAttempt,
-        updatedAt: new Date(),
-      },
-    });
-
-    if (isFinalAttempt) {
+      console.error('Error processing eSIM order:', error);
+      
+      // Update order status to failed
       await prisma.esimOrderAfterPayment.update({
         where: { orderNo: item.orderNo },
         data: {
           status: 'FAILED',
-        },
+          smdpStatus: error instanceof Error ? error.message : 'Unknown error'
+        }
       });
-    }
-  }
 
-  private async handleTimeout(item: any): Promise<void> {
-    // Get order details for email
-    const order = await prisma.esimOrderAfterPayment.findUnique({
-      where: { orderNo: item.orderNo },
-      include: {
-        user: true,
-      },
-    });
-
-    if (order?.user?.email) {
-      await sendCreateEsimFailedEmail(order.user.email, {
-        orderNo: item.orderNo,
-        error: 'E-SIM creation timed out after 30 minutes',
-        supportEmail: 'globlinksolution@gmail.com',
-        message: 'We were unable to create your eSIM within the expected time. Please contact our support team for assistance.',
+      // Send failure email
+      const order = await prisma.esimOrderAfterPayment.findUnique({
+        where: { orderNo: item.orderNo },
+        include: { user: true }
       });
+
+      if (order?.user?.email) {
+        await sendCreateEsimFailedEmail(
+          order.user.email,
+          item.orderNo
+        );
+      }
+
+      // Update queue item with error
+      await prisma.processingQueue.update({
+        where: { id: item.id },
+        data: {
+          status: 'FAILED',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          errorDetails: error,
+          lastAttempt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+
+      throw error;
+    }
+  }
+
+  private async pollForOrderStatus(orderNo: string): Promise<EsimProfile | null> {
+    const MAX_ATTEMPTS = 30;
+    const POLL_INTERVAL = 2000; // 2 seconds
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const profile = await queryEsimProfile(orderNo);
+        if (profile && profile.esimStatus === 'ACTIVE') {
+          return profile;
+        }
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+      } catch (error) {
+        console.error('Error polling for order status:', error);
+        if (attempt === MAX_ATTEMPTS - 1) {
+          throw error;
+        }
+      }
     }
 
-    // Mark as failed
-    await prisma.processingQueue.update({
-      where: { id: item.id },
-      data: {
-        status: 'FAILED',
-        error: 'Processing timeout after 30 minutes',
-        errorDetails: {
-          message: 'Processing timeout after 30 minutes',
-          code: 'TIMEOUT',
-        },
-        updatedAt: new Date(),
-      },
-    });
-
-    // Update order status
-    await prisma.esimOrderAfterPayment.update({
-      where: { orderNo: item.orderNo },
-      data: {
-        status: 'FAILED',
-      },
-    });
+    return null;
   }
 
-  private async cleanupOldItems(): Promise<void> {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    
-    await prisma.processingQueue.deleteMany({
-      where: {
-        OR: [
-          { status: 'COMPLETED' },
-          { status: 'FAILED' },
-        ],
-        updatedAt: {
-          lt: thirtyDaysAgo,
-        },
-      },
-    });
-  }
-
-  private calculateNextAttempt(retryCount: number): Date {
-    // Exponential backoff: 1min, 2min, 4min, 8min, 16min
-    const delayMinutes = Math.pow(2, retryCount - 1);
-    return new Date(Date.now() + delayMinutes * 60 * 1000);
-  }
-
-  private async processEsimOrder(item: any): Promise<void> {
-    // Get the order details
-    const order = await prisma.esimOrderAfterPayment.findUnique({
-      where: { orderNo: item.orderNo },
-      include: {
-        package: true,
-      },
-    });
-
-    if (!order) {
-      throw new Error(`Order ${item.orderNo} not found`);
-    }
-
-    // Check if order is already processed
-    if (order.status === 'COMPLETED') {
+  public async startProcessing(): Promise<void> {
+    if (this.isProcessing) {
       return;
     }
 
-    // Update order status to processing
-    await prisma.esimOrderAfterPayment.update({
-      where: { orderNo: item.orderNo },
-      data: {
-        status: 'PROCESSING',
-      },
-    });
+    this.isProcessing = true;
+    this.processingInterval = setInterval(async () => {
+      try {
+        const item = await prisma.processingQueue.findFirst({
+          where: {
+            status: 'PENDING',
+            nextAttempt: {
+              lte: new Date()
+            }
+          },
+          orderBy: {
+            createdAt: 'asc'
+          }
+        });
 
-    try {
-      // TODO: Add your eSIM creation logic here
-      // This is where you'll integrate with your eSIM provider's API
-      // For now, we'll just simulate a successful creation
-      
-      // Update order status to completed
-      await prisma.esimOrderAfterPayment.update({
-        where: { orderNo: item.orderNo },
-        data: {
-          status: 'COMPLETED',
-          esimStatus: 'UNUSED_EXPIRED',
-          smdpStatus: 'ENABLED',
-        },
-      });
-    } catch (error) {
-      // If eSIM creation fails, update order status
-      await prisma.esimOrderAfterPayment.update({
-        where: { orderNo: item.orderNo },
-        data: {
-          status: 'FAILED',
-        },
-      });
-      throw error; // Re-throw to trigger queue retry mechanism
+        if (!item) {
+          return;
+        }
+
+        switch (item.type) {
+          case 'ESIM_ORDER_PROCESSING':
+            await this.processEsimOrder(item);
+            break;
+          default:
+            console.warn('Unknown queue item type:', item.type);
+        }
+      } catch (error) {
+        console.error('Error processing queue item:', error);
+      }
+    }, 5000); // Check every 5 seconds
+  }
+
+  public stopProcessing(): void {
+    if (this.processingInterval) {
+      clearInterval(this.processingInterval);
+      this.processingInterval = null;
     }
+    this.isProcessing = false;
   }
 } 
