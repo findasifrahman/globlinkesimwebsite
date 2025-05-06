@@ -30,13 +30,13 @@ export default function OrderDetails() {
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [processingTime, setProcessingTime] = useState<number>(0);
 
   const fetchOrder = useCallback(async () => {
     if (!orderNo) return;
     
     try {
       setLoading(true);
-      // Single API call that includes all order data including eSIM profile
       const response = await fetch(`/api/orders/${orderNo}/details`, {
         cache: 'no-store',
         next: { revalidate: 0 }
@@ -48,6 +48,14 @@ export default function OrderDetails() {
       
       const data = await response.json();
       setOrder(data.order);
+
+      // If order is in processing state, start tracking time
+      if (data.order.status === 'PENDING' || data.order.status === 'PROCESSING') {
+        const createdAt = new Date(data.order.createdAt);
+        const now = new Date();
+        const minutesElapsed = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
+        setProcessingTime(minutesElapsed);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch order');
     } finally {
@@ -84,6 +92,21 @@ export default function OrderDetails() {
     }
   }, [status, router, orderNo]);
 
+  // Poll for order status if it's in processing state
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (order?.status === 'PENDING' || order?.status === 'PROCESSING') {
+      interval = setInterval(() => {
+        fetchOrder();
+      }, 120000); // Poll every 2 minutes (120 seconds)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [order?.status, fetchOrder]);
+
   const handleBack = () => {
     router.push('/account');
   };
@@ -105,7 +128,23 @@ export default function OrderDetails() {
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Navbar />
         <Container sx={{ flex: 1, py: 4 }}>
-          <Alert severity="error">{error}</Alert>
+          <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+          {order?.status === 'FAILED' && (
+            <>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                We've received your payment but encountered an issue creating your eSIM.
+                Our team has been notified and will process your order within 30 minutes.
+                You'll receive an email once your eSIM is ready.
+              </Alert>
+              <Button 
+                variant="contained" 
+                onClick={() => router.push('/support')}
+                sx={{ mt: 2 }}
+              >
+                Contact Support
+              </Button>
+            </>
+          )}
         </Container>
         <Footer />
       </Box>
@@ -132,9 +171,33 @@ export default function OrderDetails() {
           Order Details
         </Typography>
         
+        {/* Processing Status Alert */}
+        {(order?.status === 'PENDING' || order?.status === 'PROCESSING') && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Your eSIM is being processed
+            </Typography>
+            <Typography variant="body2">
+              {processingTime >= 30 
+                ? "We're still processing your order. Please wait while we resolve this. You'll receive an email once your eSIM is ready."
+                : `Please wait while we create your eSIM. This may take up to 30 minutes. You'll receive an email once it's ready.`}
+            </Typography>
+            {processingTime >= 30 && (
+              <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={() => router.push('/support')}
+                sx={{ mt: 1 }}
+              >
+                Contact Support
+              </Button>
+            )}
+          </Alert>
+        )}
+
         <Grid container spacing={3}>
           {/* Order Information */}
-          <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
+          <Grid component="div" item xs={12} md={6} sx={{ display: 'flex' }}>
             <Card sx={{ width: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Order Information</Typography>
@@ -143,13 +206,18 @@ export default function OrderDetails() {
                 <Typography><strong>Amount:</strong> {order.finalAmountPaid} {order.currency}</Typography>
                 <Typography><strong>Payment Method:</strong> {order.pmName}</Typography>
                 <Typography><strong>Transaction ID:</strong> {order.transactionId}</Typography>
+                {order.status === 'PENDING' || order.status === 'PROCESSING' ? (
+                  <Typography color="text.secondary" sx={{ mt: 2 }}>
+                    <strong>Processing Time:</strong> {processingTime} minutes
+                  </Typography>
+                ) : null}
               </CardContent>
             </Card>
           </Grid>
 
           {/* eSIM Details */}
           {order.status === 'GOT_RESOURCE' && (
-            <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
+            <Grid component="div" item xs={12} md={6} sx={{ display: 'flex' }}>
               <Card sx={{ width: '100%' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>eSIM Details</Typography>
@@ -167,7 +235,7 @@ export default function OrderDetails() {
 
           {/* QR Code */}
           {order.qrCode && (
-            <Grid item xs={12} sx={{ display: 'flex' }}>
+            <Grid component="div" item xs={12} sx={{ display: 'flex' }}>
               <Paper elevation={3} sx={{ p: 3, textAlign: 'center', width: '100%' }}>
                 <Typography variant="h6" gutterBottom>eSIM QR Code</Typography>
                 <Box sx={{ 

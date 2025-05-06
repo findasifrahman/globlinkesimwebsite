@@ -226,6 +226,7 @@ model esimOrderAfterPayment {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   esimProfile   EsimProfile?
+  queueItems    ProcessingQueue[]
 
   @@index([userId])
   @@index([packageCode])
@@ -284,17 +285,23 @@ model PaymentWebhookState {
 
 // prisma/schema.prisma
 model ProcessingQueue {
-  id         String   @id @default(cuid())
-  orderNo    String   @map("order_no")
-  type       String   // ESIM_ORDER_PROCESSING, etc.
-  status     String   // PENDING, COMPLETED, FAILED
-  error      String?
-  retryCount Int      @default(0)
-  lastAttempt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            String   @id @default(cuid())
+  orderNo       String   @map("order_no")
+  type          String   // ESIM_ORDER_PROCESSING
+  status        String   // PENDING, PROCESSING, COMPLETED, FAILED
+  error         String?
+  errorDetails  Json?    // Store detailed error information
+  retryCount    Int      @default(0)
+  lastAttempt   DateTime?
+  nextAttempt   DateTime? // When to try next (for exponential backoff)
+  maxRetries    Int      @default(5)
+  priority      Int      @default(0) // Higher number = higher priority
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  order         esimOrderAfterPayment @relation(fields: [orderNo], references: [orderNo])
 
   @@index([orderNo])
+  @@index([status, nextAttempt]) // For efficient queue processing
   @@map("processing_queue")
 }
 
