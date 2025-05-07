@@ -1,22 +1,33 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { CircularProgress, Typography, Box, Alert, Button } from '@mui/material';
 
 export default function PaymentSuccess() {
   const { orderId } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [pollCount, setPollCount] = useState(0);
-  const MAX_POLLS = 12; // 1 minute of polling (5s * 12)
+  const MAX_POLLS = 6; // 1 minute of polling (5s * 12)
 
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        // First, try to create eSIM if not already created
+        // First check payment status
+        const paymentResponse = await fetch(`/api/payment/status?order_id=${orderId}`);
+        const paymentData = await paymentResponse.json();
+
+        if (paymentData.status !== 'completed') {
+          setStatus('failed');
+          setError('Payment was not successful. Please try again.');
+          return;
+        }
+
+        // If payment is successful, proceed with eSIM creation
         if (status === 'processing') {
           const createResponse = await fetch(`/api/process-order/${orderId}`, {
             method: 'POST',
@@ -71,9 +82,36 @@ export default function PaymentSuccess() {
     checkStatus();
 
     // Check status every 5 seconds
-    const interval = setInterval(checkStatus, 5000);
+    const interval = setInterval(checkStatus, 10000);
     return () => clearInterval(interval);
   }, [orderId, router, pollCount, status]);
+
+  // If payment failed, show error immediately
+  if (searchParams.get('status') === 'failed') {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        minHeight: '60vh',
+        gap: 2
+      }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Payment was not successful
+        </Alert>
+        <Typography variant="body2">
+          Your payment was not completed. Please try again.
+        </Typography>
+        <Button 
+          variant="outlined" 
+          onClick={() => router.push('/account')}
+        >
+          Back to Account
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ 

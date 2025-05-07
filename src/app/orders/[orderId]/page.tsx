@@ -76,39 +76,73 @@ export default function OrderDetails() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const status = urlParams.get('status');
-    if (status === 'pending') {
-      setPaymentStatus('pending');
-      setError('Payment is still processing. Please wait or refresh the page.');
-      setLoading(false);
-      
-      // Create eSIM order when status is pending
-      const createEsimOrder = async () => {
-        try {
-          const response = await fetch(`/api/process-order/${orderId}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
+    
+    switch (status) {
+      case 'pending':
+        setPaymentStatus('pending');
+        setError('Payment is still processing. Please wait or refresh the page.');
+        setLoading(false);
+        
+        // Create eSIM order when status is pending
+        const createEsimOrder = async () => {
+          try {
+            const response = await fetch(`/api/process-order/${orderId}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
 
-          if (!response.ok) {
-            throw new Error('Failed to create eSIM order');
-          }
+            if (!response.ok) {
+              throw new Error('Failed to create eSIM order');
+            }
 
-          const data = await response.json();
-          if (data.success) {
-            // Refresh order details after successful creation
-            fetchOrder();
-          } else {
+            const data = await response.json();
+            if (data.success) {
+              // Refresh order details after successful creation
+              fetchOrder();
+            } else {
+              setError('Failed to create eSIM order. Please contact support.');
+            }
+          } catch (err) {
+            console.error('Error creating eSIM order:', err);
             setError('Failed to create eSIM order. Please contact support.');
           }
-        } catch (err) {
-          console.error('Error creating eSIM order:', err);
-          setError('Failed to create eSIM order. Please contact support.');
-        }
-      };
+        };
 
-      createEsimOrder();
+        createEsimOrder();
+        break;
+
+      case 'failed':
+        setPaymentStatus('failed');
+        setError('Payment was not successful. Please try again.');
+        setLoading(false);
+        break;
+
+      case 'canceled':
+        setPaymentStatus('canceled');
+        setError('Payment was canceled. Please try again if you wish to complete your purchase.');
+        setLoading(false);
+        break;
+
+      case 'delayed':
+        setPaymentStatus('delayed');
+        setError('Payment is delayed. Please wait while we process your payment.');
+        setLoading(false);
+        break;
+
+      case 'expired':
+        setPaymentStatus('expired');
+        setError('Payment session has expired. Please try again.');
+        setLoading(false);
+        break;
+
+      default:
+        // For any other status, just set it but don't show an error
+        if (status) {
+          setPaymentStatus(status);
+          setLoading(false);
+        }
     }
   }, [orderId, fetchOrder]);
 
@@ -156,7 +190,43 @@ export default function OrderDetails() {
         <Navbar />
         <Container sx={{ flex: 1, py: 4 }}>
           <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-          {order?.status === 'FAILED' && (
+          {paymentStatus === 'failed' || paymentStatus === 'canceled' || paymentStatus === 'expired' ? (
+            <>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {paymentStatus === 'failed' && 'Your payment was not completed. Please try again or contact support if you need assistance.'}
+                {paymentStatus === 'canceled' && 'Your payment was canceled. You can try again when you\'re ready.'}
+                {paymentStatus === 'expired' && 'Your payment session has expired. Please start a new payment to complete your purchase.'}
+              </Alert>
+              <Button 
+                variant="contained" 
+                onClick={() => router.push('/account')}
+                sx={{ mt: 2, mr: 2 }}
+              >
+                Back to Account
+              </Button>
+              <Button 
+                variant="outlined" 
+                onClick={() => router.push('/support')}
+                sx={{ mt: 2 }}
+              >
+                Contact Support
+              </Button>
+            </>
+          ) : paymentStatus === 'delayed' ? (
+            <>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Your payment is being processed. This may take a few minutes.
+                Please wait while we confirm your payment.
+              </Alert>
+              <Button 
+                variant="contained" 
+                onClick={() => router.push('/account')}
+                sx={{ mt: 2 }}
+              >
+                Back to Account
+              </Button>
+            </>
+          ) : order?.status === 'FAILED' ? (
             <>
               <Alert severity="info" sx={{ mb: 2 }}>
                 We've received your payment but encountered an issue creating your eSIM.
@@ -171,7 +241,7 @@ export default function OrderDetails() {
                 Contact Support
               </Button>
             </>
-          )}
+          ) : null}
         </Container>
         <Footer />
       </Box>

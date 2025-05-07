@@ -86,8 +86,9 @@ export async function GET(req: Request) {
       // Redirect to payment success page
       return NextResponse.redirect(new URL(`/payment-success/${paymentOrderNo}`, baseUrl));
     } else {
-      // Redirect to failure page
-      return NextResponse.redirect(new URL(`/payment-success/${paymentOrderNo}?status=failed`, baseUrl));
+      // If payment failed or is pending, redirect to orders page with error status
+      console.log("Payment failed or pending, redirecting to orders page with error status");
+      return NextResponse.redirect(new URL(`/orders/${paymentOrderNo}?status=failed`, baseUrl));
     }
   } catch (error) {
     console.error('Error processing payment return:', error);

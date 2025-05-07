@@ -80,7 +80,7 @@ export async function POST(
     // Check if the response indicates success
     const responseData = await esimOrder.json();
     if (!responseData.success) {
-      // Increment retry count
+      // Increment retry count and update status
       await prisma.esimOrderAfterPayment.update({
         where: { id: order.id },
         data: { 
@@ -243,7 +243,10 @@ export async function createesimorder(packageCode: string, count: number, price:
     // Check if environment variables are set
     if (!REDTEA_ACCESS_CODE || !REDTEA_SECRET_KEY) {
       console.error('Missing environment variables: ESIM_ACCESS_CODE or ESIM_SECRET_KEY');
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      return NextResponse.json({ 
+        success: false,
+        error: 'Server configuration error' 
+      }, { status: 500 });
     }
 
     // Get package details
@@ -253,7 +256,10 @@ export async function createesimorder(packageCode: string, count: number, price:
     console.log("package details are in return route--", packageDetails);
 
     if (!packageDetails) {
-      return NextResponse.json({ error: 'Package not found' }, { status: 404 });
+      return NextResponse.json({ 
+        success: false,
+        error: 'Package not found' 
+      }, { status: 404 });
     }
 
     // Generate timestamp
@@ -294,16 +300,31 @@ export async function createesimorder(packageCode: string, count: number, price:
 
     const result = await response.json();
     console.log("result from esim order after payment in createesimorder--", result);
+    
     if (!response.ok || !result.success) {
-      // If Redtea API call fails, update order status to FAILED
-      await prisma.esimOrderAfterPayment.update({
-        where: { paymentOrderNo: paymentOrderNo },
-        data: { 
-          orderNo: result.obj.orderNo,
-          status: 'FAILED' 
-        },
-      });
-      throw new Error(result.errorMsg || 'Failed to create order with provider');
+      try {
+        // If Redtea API call fails, update order status to FAILED
+        await prisma.esimOrderAfterPayment.update({
+          where: { paymentOrderNo: paymentOrderNo },
+          data: { 
+            orderNo: result.obj?.orderNo || 'FAILED-' + paymentOrderNo,
+            status: 'FAILED'
+          },
+        });
+      } catch (dbError) {
+        console.error('Error updating order status after API failure:', dbError);
+        // Even if DB update fails, we still want to indicate API failure
+        return NextResponse.json({ 
+          success: false,
+          error: result.errorMsg || 'Failed to create order with provider',
+          dbError: 'Failed to update order status'
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ 
+        success: false,
+        error: result.errorMsg || 'Failed to create order with provider'
+      }, { status: 500 });
     }
 
     // Update order with esim order number from API response
@@ -329,15 +350,23 @@ export async function createesimorder(packageCode: string, count: number, price:
         success: true, 
         obj: result.obj
       });
-    } catch (error) {
-      console.error('Error updating order:', error);
-      throw new Error('Failed to update order');
+    } catch (dbError) {
+      console.error('Error updating order after successful API call:', dbError);
+      return NextResponse.json({ 
+        success: false,
+        error: 'Failed to update order in database',
+        apiSuccess: true // Indicate that API call was successful
+      }, { status: 500 });
     }
 
   } catch (error) {
     console.error('Error creating esim order:', error);
     return NextResponse.json(
-      { error: 'Failed to create order' },
+      { 
+        success: false,
+        error: 'Failed to create order',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
