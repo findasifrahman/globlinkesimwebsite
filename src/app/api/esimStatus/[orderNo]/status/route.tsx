@@ -16,9 +16,20 @@ export default function PaymentSuccess() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/orders/${orderNo}/status`);
+        // Use the correct endpoint
+        const response = await fetch(`/api/orders/${orderNo}/status`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
-        console.log("data from esim status route----------", data);
+        console.log("data from order status route----------", data);
         if (data.status === 'COMPLETED') {
           setStatus('completed');
           setOrderDetails(data);
@@ -28,7 +39,7 @@ export default function PaymentSuccess() {
           }, 3000);
         } else if (data.status === 'FAILED') {
           setStatus('failed');
-          setError(data.error);
+          setError(data.error || 'Order processing failed');
         } else if (data.status === 'PROCESSING' || data.status === 'PENDING') {
           setPollCount(prev => prev + 1);
           if (pollCount >= MAX_POLLS) {
@@ -37,7 +48,7 @@ export default function PaymentSuccess() {
           }
         }
       } catch (error) {
-        console.error('Error checking status:', error);
+        console.error('Error checking order status:', error);
         setPollCount(prev => prev + 1);
         if (pollCount >= MAX_POLLS) {
           router.push(`/orders/${orderNo}?status=processing`);
@@ -50,70 +61,32 @@ export default function PaymentSuccess() {
 
     // Check status every 5 seconds
     const interval = setInterval(checkStatus, 5000);
+
     return () => clearInterval(interval);
   }, [orderNo, router, pollCount]);
 
+  if (status === 'completed') {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <Typography variant="h5" gutterBottom>Payment Successful!</Typography>
+        <Typography>Your eSIM is being processed. Redirecting to order details...</Typography>
+      </Box>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <Alert severity="error" sx={{ mb: 2 }}>{error || 'Payment failed'}</Alert>
+        <Button variant="contained" onClick={() => router.push('/')}>Return to Home</Button>
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      minHeight: '60vh',
-      gap: 2
-    }}>
-      {status === 'processing' && (
-        <>
-          <CircularProgress size={60} />
-          <Typography variant="h6">Processing your eSIM order...</Typography>
-          <Typography variant="body2" color="text.secondary">
-            We're creating your eSIM. This may take a few moments.
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            You'll be redirected to your order page shortly.
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            You'll receive an email with your eSIM details once it's ready.
-          </Typography>
-        </>
-      )}
-      
-      {status === 'completed' && orderDetails && (
-        <>
-          <Typography variant="h6" color="success.main">
-            Your eSIM is ready!
-          </Typography>
-          <Typography variant="body2">
-            We've sent your eSIM details to your email.
-          </Typography>
-          <Button 
-            variant="contained" 
-            onClick={() => router.push(`/orders/${orderDetails.orderNo}`)}
-          >
-            View Order Details
-          </Button>
-        </>
-      )}
-      
-      {status === 'failed' && (
-        <>
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error || 'Failed to process your order'}
-          </Alert>
-          <Typography variant="body2">
-            Don't worry, we've received your payment and will process your order.
-          </Typography>
-          <Typography variant="body2">
-            You'll receive an email once your eSIM is ready.
-          </Typography>
-          <Button 
-            variant="outlined" 
-            onClick={() => router.push('/support')}
-          >
-            Contact Support
-          </Button>
-        </>
-      )}
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <CircularProgress />
+      <Typography sx={{ mt: 2 }}>Processing your payment...</Typography>
     </Box>
   );
 }
