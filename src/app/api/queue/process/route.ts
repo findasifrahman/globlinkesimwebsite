@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const queueProcessor = QueueProcessor.getInstance();
-    await queueProcessor.processQueueItems();
+    await queueProcessor.startProcessing();
 
     return NextResponse.json({ success: true });
   } catch (error) {

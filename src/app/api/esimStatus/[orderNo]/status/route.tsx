@@ -18,7 +18,7 @@ export default function PaymentSuccess() {
       try {
         const response = await fetch(`/api/orders/${orderNo}/status`);
         const data = await response.json();
-
+        console.log("data from esim status route----------", data);
         if (data.status === 'COMPLETED') {
           setStatus('completed');
           setOrderDetails(data);

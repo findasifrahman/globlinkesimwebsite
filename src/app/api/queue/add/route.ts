@@ -21,11 +21,7 @@ export async function POST(req: Request) {
     }
 
     const queueProcessor = QueueProcessor.getInstance();
-    await queueProcessor.addToQueue({
-      orderNo,
-      type,
-      priority,
-    });
+    await queueProcessor.addToQueue(type, orderNo);
 
     return NextResponse.json({ success: true });
   } catch (error) {

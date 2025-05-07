@@ -13,8 +13,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log("cron job started..calling queue processor...............");
     const queueProcessor = QueueProcessor.getInstance();
-    await queueProcessor.processQueueItems();
+    await queueProcessor.startProcessing();
+
 
     return NextResponse.json({ success: true });
   } catch (error) {

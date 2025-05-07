@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { pollForOrderStatus, queryEsimProfile } from '@/lib/esim';
-import { sendEsimEmail,sendCreateEsimFailedEmail } from '@/lib/email';
+import { sendEsimEmail, sendCreateEsimFailedEmail } from '@/lib/email';
 
 import crypto from 'crypto';
 
@@ -285,11 +285,6 @@ export async function GET(
 }
 
 export async function createesimorder(packageCode: string, count: number, price: number, transactionId: string, paymentOrderNo: string): Promise<NextResponse> {
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 5000; // 5 seconds between retries
-  let retryCount = 0;
-  let lastError: string | null = null;
-
   try {
     // Check if environment variables are set
     if (!REDTEA_ACCESS_CODE || !REDTEA_SECRET_KEY) {
@@ -302,13 +297,15 @@ export async function createesimorder(packageCode: string, count: number, price:
       where: { packageCode },
     });
     console.log("package details are in return route--", packageDetails);
+
     if (!packageDetails) {
       return NextResponse.json({ error: 'Package not found' }, { status: 404 });
     }
 
-    // Generate timestamp and transaction ID
+    // Generate timestamp
     const timestamp = Math.floor(Date.now() / 1000).toString();
 
+    console.log("creating esim order in createesimorder route--", timestamp);
     // Prepare request body
     const requestBody = JSON.stringify({
       transactionId,
@@ -329,145 +326,60 @@ export async function createesimorder(packageCode: string, count: number, price:
       REDTEA_SECRET_KEY
     );
 
-    while (retryCount < MAX_RETRIES) {
-      try {
-        // Make request to Redtea Mobile API
-        const response = await fetch(REDTEA_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Timestamp': timestamp,
-            'RT-AccessCode': REDTEA_ACCESS_CODE,
-            'X-Signature': signature
-          },
-          body: requestBody
-        });
+    // Make request to Redtea Mobile API
+    const response = await fetch(REDTEA_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Timestamp': timestamp,
+        'RT-AccessCode': REDTEA_ACCESS_CODE,
+        'X-Signature': signature
+      },
+      body: requestBody
+    });
 
-        const result = await response.json();
-        console.log(`Attempt ${retryCount + 1} result from esim order after payment in createesimorder--`, result);
-
-        if (response.ok && result.success) {
-          // Find the processing queue item first
-          const queueItem = await prisma.processingQueue.findFirst({
-            where: { orderNo: "PRPCESSING-" + paymentOrderNo }
-          });
-
-          if (!queueItem) {
-            throw new Error('Processing queue item not found');
-          }
-
-          // Update both esimOrderAfterPayment and processingQueue in a transaction
-          await prisma.$transaction([
-            prisma.esimOrderAfterPayment.update({
-              where: { paymentOrderNo: paymentOrderNo },
-              data: {
-                orderNo: result.obj.orderNo,
-                status: 'PROCESSING',
-              },
-            }),
-            prisma.esimOrderBeforePayment.update({
-              where: { paymentOrderNo: paymentOrderNo },
-              data: {
-                orderNo: result.obj.orderNo,
-                status: 'PROCESSING',
-              },
-            }),
-            prisma.processingQueue.update({
-              where: { id: queueItem.id },
-              data: {
-                orderNo: result.obj.orderNo,
-                status: 'PROCESSING',
-                updatedAt: new Date()
-              }
-            })
-          ]);
-          
-          return NextResponse.json({ 
-            success: true, 
-            obj: result.obj
-          });
-        }
-
-        // If we get here, the API call failed
-        lastError = result.errorMsg || 'API call failed';
-        retryCount++;
-        
-        if (retryCount < MAX_RETRIES) {
-          console.log(`Retrying eSIM creation (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-          continue;
-        }
-
-        // Find the processing queue item
-        const queueItem = await prisma.processingQueue.findFirst({
-          where: { orderNo: "PRPCESSING-" + paymentOrderNo }
-        });
-
-        if (!queueItem) {
-          throw new Error('Processing queue item not found');
-        }
-
-        // If we've exhausted all retries, mark as failed
-        await prisma.$transaction([
-          prisma.esimOrderAfterPayment.update({
-            where: { paymentOrderNo: paymentOrderNo },
-            data: { 
-              orderNo: "FAILED-" + paymentOrderNo,
-              status: 'FAILED',
-              smdpStatus: lastError
-            },
-          }),
-          prisma.processingQueue.update({
-            where: { id: queueItem.id },
-            data: {
-              status: 'FAILED',
-              error: lastError,
-              updatedAt: new Date()
-            }
-          })
-        ]);
-        
-        throw new Error(lastError || 'Failed to create order with provider after multiple attempts');
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : 'Unknown error occurred';
-        if (retryCount === MAX_RETRIES - 1) {
-          // Find the processing queue item
-          const queueItem = await prisma.processingQueue.findFirst({
-            where: { orderNo: "PRPCESSING-" + paymentOrderNo }
-          });
-
-          if (!queueItem) {
-            throw new Error('Processing queue item not found');
-          }
-
-          // Last retry failed, mark as failed
-          await prisma.$transaction([
-            prisma.esimOrderAfterPayment.update({
-              where: { paymentOrderNo: paymentOrderNo },
-              data: { 
-                orderNo: "FAILED-" + paymentOrderNo,
-                status: 'FAILED',
-                smdpStatus: lastError
-              },
-            }),
-            prisma.processingQueue.update({
-              where: { id: queueItem.id },
-              data: {
-                status: 'FAILED',
-                error: lastError,
-                updatedAt: new Date()
-              }
-            })
-          ]);
-          throw error;
-        }
-        retryCount++;
-        console.log(`Retrying after error (attempt ${retryCount}/${MAX_RETRIES}):`, error);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      }
+    const result = await response.json();
+    console.log("result from esim order after payment in createesimorder--", result);
+    if (!response.ok || !result.success) {
+      // If Redtea API call fails, update order status to FAILED
+      await prisma.esimOrderAfterPayment.update({
+        where: { paymentOrderNo: paymentOrderNo },
+        data: { 
+          orderNo: result.obj.orderNo,
+          status: 'FAILED' 
+        },
+      });
+      throw new Error(result.errorMsg || 'Failed to create order with provider');
     }
 
-    throw new Error(lastError || 'Failed to create order after maximum retries');
+    // Update order with esim order number from API response
+    try {
+      await prisma.$transaction([
+        prisma.esimOrderAfterPayment.update({
+          where: { paymentOrderNo: paymentOrderNo },
+          data: {
+            orderNo: result.obj.orderNo,
+            status: 'PROCESSING',
+          },
+        }),
+        prisma.esimOrderBeforePayment.update({
+          where: { paymentOrderNo: paymentOrderNo },
+          data: {
+            orderNo: result.obj.orderNo,
+            status: 'PROCESSING',
+          },
+        }),
+      ]);
+
+      return NextResponse.json({ 
+        success: true, 
+        obj: result.obj
+      });
+    } catch (error) {
+      console.error('Error updating order:', error);
+      throw new Error('Failed to update order');
+    }
+
   } catch (error) {
     console.error('Error creating esim order:', error);
     return NextResponse.json(

@@ -223,6 +223,7 @@ export class QueueProcessor {
     if (this.isProcessing) {
       return;
     }
+    console.log("queue processor started running");
 
     this.isProcessing = true;
     this.processingInterval = setInterval(async () => {
