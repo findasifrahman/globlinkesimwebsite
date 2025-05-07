@@ -19,17 +19,8 @@ jobs:
           node-version: '18'
           cache: 'npm'
           
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-          
       - name: Install Node.js dependencies
         run: npm ci
-        
-      - name: Install Python dependencies
-        run: pip install -r requirements.txt
         
       - name: Generate Prisma Client
         run: npx prisma generate
