@@ -10,10 +10,10 @@ import {
   Divider,
   CircularProgress,
   Alert,
-  Grid,
   Card,
   CardContent
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
@@ -82,8 +82,37 @@ export default function OrderDetails() {
       setPaymentStatus('pending');
       setError('Payment is still processing. Please wait or refresh the page.');
       setLoading(false);
+      
+      // Create eSIM order when status is pending
+      const createEsimOrder = async () => {
+        try {
+          const response = await fetch(`/api/process-order/${orderId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to create eSIM order');
+          }
+
+          const data = await response.json();
+          if (data.success) {
+            // Refresh order details after successful creation
+            fetchOrder();
+          } else {
+            setError('Failed to create eSIM order. Please contact support.');
+          }
+        } catch (err) {
+          console.error('Error creating eSIM order:', err);
+          setError('Failed to create eSIM order. Please contact support.');
+        }
+      };
+
+      createEsimOrder();
     }
-  }, []);
+  }, [orderId, fetchOrder]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -197,7 +226,7 @@ export default function OrderDetails() {
 
         <Grid container spacing={3}>
           {/* Order Information */}
-          <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
+          <Grid item xs={12} md={6}>
             <Card sx={{ width: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Order Information</Typography>
@@ -217,7 +246,7 @@ export default function OrderDetails() {
 
           {/* eSIM Details */}
           {order.status === 'GOT_RESOURCE' && (
-            <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
+            <Grid item xs={12} md={6}>
               <Card sx={{ width: '100%' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>eSIM Details</Typography>
@@ -235,7 +264,7 @@ export default function OrderDetails() {
 
           {/* QR Code */}
           {order.qrCode && (
-            <Grid item xs={12} sx={{ display: 'flex' }}>
+            <Grid item xs={12}>
               <Paper elevation={3} sx={{ p: 3, textAlign: 'center', width: '100%' }}>
                 <Typography variant="h6" gutterBottom>eSIM QR Code</Typography>
                 <Box sx={{ 
