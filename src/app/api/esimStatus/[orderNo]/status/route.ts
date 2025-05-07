@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 
 export async function GET(
   req: Request,
-  { params }: { params: { orderId: string } }
+  { params }: { params: { orderNo: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,14 +13,14 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const orderId = params.orderId;
+    const orderNo = params.orderNo;
 
     // Get order status
     const order = await prisma.esimOrderAfterPayment.findFirst({
       where: {
         OR: [
-          { orderNo: orderId },
-          { paymentOrderNo: orderId }
+          { orderNo: orderNo },
+          { paymentOrderNo: orderNo }
         ]
       },
       include: {
@@ -35,7 +35,7 @@ export async function GET(
     // Get queue status
     const queueItem = await prisma.processingQueue.findFirst({
       where: {
-        orderNo: orderId,
+        orderNo: orderNo,
       },
       orderBy: { createdAt: 'desc' },
     });
