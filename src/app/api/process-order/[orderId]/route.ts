@@ -52,6 +52,17 @@ export async function POST(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
+    // Check retry count
+    if (order.retryCount >= 3) {
+      if (session?.user?.email) {
+        await sendCreateEsimFailedEmail(session.user.email, order.paymentOrderNo ?? order.orderNo);
+      }
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Maximum retry attempts reached' 
+      }, { status: 400 });
+    }
+
     // Ensure required fields are present
     if (!order.packageCode || !order.transactionId) {
       throw new Error('Missing required order fields');
@@ -69,6 +80,15 @@ export async function POST(
     // Check if the response indicates success
     const responseData = await esimOrder.json();
     if (!responseData.success) {
+      // Increment retry count
+      await prisma.esimOrderAfterPayment.update({
+        where: { id: order.id },
+        data: { 
+          retryCount: { increment: 1 },
+          status: 'FAILED'
+        }
+      });
+
       if (session?.user?.email) {
         await sendCreateEsimFailedEmail(session.user.email, order.paymentOrderNo ?? order.orderNo);
       }
@@ -196,54 +216,12 @@ export async function GET(
           discountCode: order.discountCode ?? undefined,
         });
 
-        // Update processing queue using id
-        const queueItem = await prisma.processingQueue.findFirst({
-          where: { 
-            OR: [
-              { orderNo: order.paymentOrderNo ?? '' },
-              { orderNo: order.orderNo }
-            ]
-          }
-        });
-
-        if (queueItem) {
-          await prisma.processingQueue.update({
-            where: { id: queueItem.id },
-            data: {
-              status: 'COMPLETED',
-              updatedAt: new Date()
-            }
-          });
-        }
-
         return NextResponse.json({ 
           status: 'GOT_RESOURCE',
           orderNo: updatedOrder.orderNo
         });
-      } else {
-        // failed to get resource
-        const queueItem = await prisma.processingQueue.findFirst({
-          where: { 
-            OR: [
-              { orderNo: order.paymentOrderNo ?? '' },
-              { orderNo: order.orderNo }
-            ]
-          }
-        });
-
-        if (queueItem) {
-          await prisma.processingQueue.update({
-            where: { id: queueItem.id },
-            data: {
-              status: 'RETRY',
-              retryCount: { increment: 1 },
-              lastAttempt: new Date(),
-              updatedAt: new Date()
-            }
-          });
-        }
-        return NextResponse.json({ status: 'PROCESSING' });
       }
+      return NextResponse.json({ status: 'PROCESSING' });
     }
 
     // Return current status
@@ -253,30 +231,6 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error checking order status:', error);
-
-    // Update queue with error using id
-    const queueItem = await prisma.processingQueue.findFirst({
-      where: { 
-        OR: [
-          { orderNo: params.orderId },
-          { orderNo: params.orderId }
-        ]
-      }
-    });
-
-    if (queueItem) {
-      await prisma.processingQueue.update({
-        where: { id: queueItem.id },
-        data: {
-          status: 'FAILED',
-          error: String(error),
-          retryCount: { increment: 1 },
-          lastAttempt: new Date(),
-          updatedAt: new Date()
-        }
-      });
-    }
-
     return NextResponse.json({ 
       status: 'FAILED',
       error: 'Failed to check order status' 

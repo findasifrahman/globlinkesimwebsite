@@ -49,7 +49,7 @@ export class QueueProcessor {
         retryCount: 0,
         lastAttempt: null,
         nextAttempt: new Date(),
-        maxRetries: 5,
+        maxRetries: 2,
         priority: 0,
         error: null,
         errorDetails: Prisma.JsonNull
@@ -57,8 +57,66 @@ export class QueueProcessor {
     });
   }
 
+  public async startProcessing(): Promise<void> {
+    if (this.isProcessing) {
+      console.log('Queue processing is already in progress');
+      return;
+    }
+
+    this.isProcessing = true;
+    console.log('Starting queue processing...');
+
+    try {
+      // Get pending queue items
+      const pendingItems = await prisma.processingQueue.findMany({
+        where: {
+          status: 'PENDING',
+          OR: [
+            { nextAttempt: { lte: new Date() } },
+            { nextAttempt: null }
+          ],
+          retryCount: { lt: 2 } // Max 2 retries
+        },
+        orderBy: [
+          { priority: 'desc' },
+          { createdAt: 'asc' }
+        ]
+      });
+
+      console.log(`Found ${pendingItems.length} pending items to process`);
+
+      // Process each item
+      for (const item of pendingItems) {
+        try {
+          await this.processEsimOrder(item);
+        } catch (error) {
+          console.error(`Error processing item ${item.id}:`, error);
+          // Update item status to RETRY
+          await prisma.processingQueue.update({
+            where: { id: item.id },
+            data: {
+              status: 'RETRY',
+              retryCount: { increment: 1 },
+              lastAttempt: new Date(),
+              nextAttempt: new Date(Date.now() + 5 * 60 * 1000), // Retry after 5 minutes
+              error: error instanceof Error ? error.message : 'Unknown error',
+              errorDetails: error
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error in queue processing:', error);
+      throw error;
+    } finally {
+      this.isProcessing = false;
+      console.log('Queue processing completed');
+    }
+  }
+
   public async processEsimOrder(item: QueueItem): Promise<void> {
     try {
+      console.log("Processing esim order in the queue processor.......");
       // Fetch order details
       const order = await prisma.esimOrderAfterPayment.findUnique({
         where: { orderNo: item.orderNo },
@@ -110,44 +168,7 @@ export class QueueProcessor {
         }
       });
 
-      // Poll for order status
-      const esimProfile = await this.pollForOrderStatus(result.obj.orderNo);
-      if (!esimProfile) {
-        throw new Error('Failed to get eSIM profile');
-      }
-
-      // Update order with eSIM details
-      await prisma.esimOrderAfterPayment.update({
-        where: { orderNo: result.obj.orderNo },
-        data: {
-          status: 'COMPLETED',
-          esimStatus: esimProfile.esimStatus,
-          smdpStatus: esimProfile.smdpStatus,
-          dataRemaining: esimProfile.dataRemaining,
-          dataUsed: esimProfile.dataUsed,
-          expiryDate: esimProfile.expiryDate ? new Date(esimProfile.expiryDate) : null,
-          daysRemaining: esimProfile.daysRemaining,
-          qrCode: esimProfile.qrCode,
-          iccid: esimProfile.iccid
-        }
-      });
-
-      // Send email with eSIM details
-      if (order.user?.email) {
-        await sendEsimEmail(
-          order.user.email,
-          result.obj.orderNo,
-          {
-            ...esimProfile,
-            packageCode: order.packageCode,
-            amount: order.finalAmountPaid || 0,
-            currency: order.currency || 'USD',
-            discountCode: order.discountCode || undefined
-          }
-        );
-      }
-
-      // Mark queue item as completed
+      // Update queue item status
       await prisma.processingQueue.update({
         where: { id: item.id },
         data: {
@@ -158,103 +179,8 @@ export class QueueProcessor {
 
     } catch (error) {
       console.error('Error processing eSIM order:', error);
-      
-      // Update order status to failed
-      await prisma.esimOrderAfterPayment.update({
-        where: { orderNo: item.orderNo },
-        data: {
-          status: 'FAILED',
-          smdpStatus: error instanceof Error ? error.message : 'Unknown error'
-        }
-      });
-
-      // Send failure email
-      const order = await prisma.esimOrderAfterPayment.findUnique({
-        where: { orderNo: item.orderNo },
-        include: { user: true }
-      });
-
-      if (order?.user?.email) {
-        await sendCreateEsimFailedEmail(
-          order.user.email,
-          item.orderNo
-        );
-      }
-
-      // Update queue item with error
-      await prisma.processingQueue.update({
-        where: { id: item.id },
-        data: {
-          status: 'FAILED',
-          error: error instanceof Error ? error.message : 'Unknown error',
-          errorDetails: error,
-          lastAttempt: new Date(),
-          updatedAt: new Date()
-        }
-      });
-
       throw error;
     }
-  }
-
-  private async pollForOrderStatus(orderNo: string): Promise<EsimProfile | null> {
-    const MAX_ATTEMPTS = 30;
-    const POLL_INTERVAL = 2000; // 2 seconds
-
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      try {
-        const profile = await queryEsimProfile(orderNo);
-        if (profile && profile.esimStatus === 'ACTIVE') {
-          return profile;
-        }
-        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
-      } catch (error) {
-        console.error('Error polling for order status:', error);
-        if (attempt === MAX_ATTEMPTS - 1) {
-          throw error;
-        }
-      }
-    }
-
-    return null;
-  }
-
-  public async startProcessing(): Promise<void> {
-    if (this.isProcessing) {
-      return;
-    }
-    console.log("queue processor started running");
-
-    this.isProcessing = true;
-    this.processingInterval = setInterval(async () => {
-      try {
-        const item = await prisma.processingQueue.findFirst({
-          where: {
-            status: 'PENDING',
-            nextAttempt: {
-              lte: new Date()
-            }
-          },
-          orderBy: {
-            createdAt: 'asc'
-          }
-        });
-
-        if (!item) {
-          return;
-        }
-
-        switch (item.type) {
-          case 'ESIM_ORDER_PROCESSING':
-            await this.processEsimOrder(item);
-            break;
-          default:
-            console.warn('Unknown queue item type:', item.type);
-        }
-      } catch (error) {
-        console.error('Error processing queue item:', error);
-      }
-    }, 5000); // Check every 5 seconds
   }
 
   public stopProcessing(): void {

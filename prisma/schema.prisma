@@ -223,6 +223,7 @@ model esimOrderAfterPayment {
   topUpTransactionId String? @map("top_up_transaction_id")
   topUpAmount   Decimal? @db.Decimal(10, 2) @map("top_up_amount")
   topUpDate     DateTime? @map("top_up_date")
+  retryCount    Int      @default(0) @map("retry_count")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   esimProfile   EsimProfile?

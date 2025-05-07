@@ -1,29 +1,35 @@
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { QueueProcessor } from '@/lib/queueProcessor';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    // Verify the request is from Railway's cron
-    const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    console.log("cron job started..calling queue processor...............");
+    // Get the queue processor instance
     const queueProcessor = QueueProcessor.getInstance();
+
+    // Process queue items
     await queueProcessor.startProcessing();
 
+    // Close the Prisma connection
+    await prisma.$disconnect();
 
-    return NextResponse.json({ success: true });
+    // Return success response
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Queue processing completed' 
+    });
   } catch (error) {
+    // Ensure Prisma connection is closed even if there's an error
+    await prisma.$disconnect();
+    
     console.error('Error processing queue:', error);
-    return NextResponse.json(
-      { error: 'Failed to process queue' },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Failed to process queue' 
+    }, { status: 500 });
   }
 } 

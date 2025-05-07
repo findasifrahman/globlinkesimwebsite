@@ -31,6 +31,7 @@ export default function OrderDetails() {
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [processingTime, setProcessingTime] = useState<number>(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const fetchOrder = useCallback(async () => {
     if (!orderId) return;
@@ -60,25 +61,22 @@ export default function OrderDetails() {
       setError(err instanceof Error ? err.message : 'Failed to fetch order');
     } finally {
       setLoading(false);
+      setIsInitialLoad(false);
     }
   }, [orderId]);
 
   // Initial fetch when component mounts
   useEffect(() => {
-    if (orderId && session?.user) {
+    if (orderId && session?.user && isInitialLoad) {
       fetchOrder();
     }
-  }, [orderId, session?.user, fetchOrder]);
+  }, [orderId, session?.user, isInitialLoad, fetchOrder]);
 
   // Handle payment status from URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const status = urlParams.get('status');
-    if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'rejected') {
-      setPaymentStatus(status);
-      setError('Payment failed. Please try again or contact support if the issue persists.');
-      setLoading(false);
-    } else if (status === 'pending') {
+    if (status === 'pending') {
       setPaymentStatus('pending');
       setError('Payment is still processing. Please wait or refresh the page.');
       setLoading(false);
