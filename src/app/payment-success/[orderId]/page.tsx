@@ -16,10 +16,32 @@ export default function PaymentSuccess() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/esimStatus/${orderId}/status`);
+        // First, try to create eSIM if not already created
+        if (status === 'processing') {
+          const createResponse = await fetch(`/api/process-order/${orderId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (!createResponse.ok) {
+            throw new Error('Failed to create eSIM order');
+          }
+          
+          const createData = await createResponse.json();
+          if (!createData.success) {
+            setStatus('failed');
+            setError(createData.error || 'Failed to create eSIM order');
+            return;
+          }
+        }
+
+        // Check order status
+        const response = await fetch(`/api/process-order/${orderId}`);
         const data = await response.json();
 
-        if (data.status === 'COMPLETED') {
+        if (data.status === 'GOT_RESOURCE') {
           setStatus('completed');
           setOrderDetails(data);
           // Show success for 3 seconds before redirecting
@@ -28,7 +50,7 @@ export default function PaymentSuccess() {
           }, 3000);
         } else if (data.status === 'FAILED') {
           setStatus('failed');
-          setError(data.error);
+          setError(data.error || 'Failed to process your order');
         } else if (data.status === 'PROCESSING' || data.status === 'PENDING') {
           setPollCount(prev => prev + 1);
           if (pollCount >= MAX_POLLS) {
@@ -51,7 +73,7 @@ export default function PaymentSuccess() {
     // Check status every 5 seconds
     const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
-  }, [orderId, router, pollCount]);
+  }, [orderId, router, pollCount, status]);
 
   return (
     <Box sx={{ 

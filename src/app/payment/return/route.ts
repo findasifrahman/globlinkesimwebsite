@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-
+import { sendPaymentConfirmationEmail } from '@/lib/email';
 // Mark this route as dynamic to prevent static generation
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +38,7 @@ export async function GET(req: Request) {
 
     // If payment is completed, update order status and redirect
     if (paymentState.status === 'completed') {
+      console.log("Payment is completed, updating order status....");
       // Update the esimOrderBeforePayment with payment details
       const updatedOrderBeforePayment = await prisma.esimOrderBeforePayment.update({
         where: {
@@ -78,11 +79,15 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: 'Failed to create order after payment' }, { status: 500 });
       }
 
-      // Redirect to orders page with pending status
-      return NextResponse.redirect(new URL(`/orders/${paymentOrderNo}?status=pending`, baseUrl));
+      // Send email to user with order details
+      await sendPaymentConfirmationEmail(session.user.email, paymentOrderNo);
+
+      console.log("Order after payment created, redirecting to payment success page....");
+      // Redirect to payment success page
+      return NextResponse.redirect(new URL(`/payment-success/${paymentOrderNo}`, baseUrl));
     } else {
       // Redirect to failure page
-      return NextResponse.redirect(new URL(`/orders/${paymentOrderNo}?status=failed`, baseUrl));
+      return NextResponse.redirect(new URL(`/payment-success/${paymentOrderNo}?status=failed`, baseUrl));
     }
   } catch (error) {
     console.error('Error processing payment return:', error);
