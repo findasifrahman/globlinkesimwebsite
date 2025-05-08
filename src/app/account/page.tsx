@@ -81,7 +81,23 @@ export default function AccountPage() {
       const data = await response.json();
       console.log('[Account Page] Fetched orders:', data.orders.length);
 
-      const processedOrders = await Promise.all(data.orders.map(async (order: any) => {
+      if (data.orders.length === 0) {
+        setOrders([]);
+        return;
+      }
+
+      // Filter orders from the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentOrders = data.orders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate >= thirtyDaysAgo;
+      });
+
+      console.log('[Account Page] Recent orders (last 30 days):', recentOrders.length);
+
+      const processedOrders = await Promise.all(recentOrders.map(async (order: any) => {
         try {
           console.log(`[Account Page] Fetching profile for order: ${order.orderNo}`);
           const profileResponse = await fetch(`/api/orders/${order.orderNo}/profile`, {
@@ -93,7 +109,7 @@ export default function AccountPage() {
 
           if (!profileResponse.ok) {
             console.error(`[Account Page] Failed to fetch profile for order ${order.orderNo}:`, profileResponse.statusText);
-            return null; // Return null to filter out this order
+            return null;
           }
           
           const profileData = await profileResponse.json();
@@ -150,7 +166,7 @@ export default function AccountPage() {
           };
         } catch (error) {
           console.error(`[Account Page] Error processing order ${order.orderNo}:`, error);
-          return null; // Return null to filter out this order
+          return null;
         }
       }));
 
@@ -244,6 +260,10 @@ export default function AccountPage() {
               My eSIMs
             </Typography>
             
+            <Alert severity="info" sx={{ mb: 3 }}>
+              Showing eSIMs from the last 30 days. For older eSIMs, please contact support.
+            </Alert>
+            
             <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
               <Tab label="Active" />
               <Tab label="Inactive" />
@@ -261,7 +281,7 @@ export default function AccountPage() {
               </Box>
             ) : filteredOrders.length === 0 ? (
               <Alert severity="info">
-                No {activeTab === 0 ? 'active' : 'inactive'} eSIMs found
+                No {activeTab === 0 ? 'active' : 'inactive'} eSIMs found in the last 30 days
               </Alert>
             ) : (
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3 }}>
