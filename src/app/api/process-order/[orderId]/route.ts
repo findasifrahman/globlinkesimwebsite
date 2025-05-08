@@ -275,7 +275,7 @@ export async function createesimorder(packageCode: string, count: number, price:
       packageInfoList: [{
         packageCode,
         count,
-        price: price,//packageDetails.price, // get price from package details not the parameter
+        price: packageDetails.price, // get price from package details not the parameter
         periodNum: packageDetails.duration
       }]
     });

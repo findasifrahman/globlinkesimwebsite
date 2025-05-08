@@ -196,8 +196,14 @@ export async function GET(request: Request) {
       },
     });
 
-    //console.log('Fetched orders:', orders);
-    return NextResponse.json({ orders });
+    // Convert BigInt values to strings
+    const formattedOrders = orders.map(order => ({
+      ...order,
+      dataRemaining: order.dataRemaining?.toString() || null,
+      dataUsed: order.dataUsed?.toString() || null,
+    }));
+
+    return NextResponse.json({ orders: formattedOrders });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return NextResponse.json(
