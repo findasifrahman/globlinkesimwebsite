@@ -121,6 +121,21 @@ export default function AccountPage() {
             return null;
           }
 
+          // Get package details from localStorage
+          const storedPackages = localStorage.getItem('packages');
+          let packageDetails = null;
+          if (storedPackages) {
+            try {
+              const packages = JSON.parse(storedPackages);
+              packageDetails = packages.find((pkg: any) => 
+                pkg.packageCode === order.packageCode || 
+                pkg.packageCode === profileData.packageCode
+              );
+            } catch (e) {
+              console.error('Error parsing stored packages:', e);
+            }
+          }
+
           // Update the database with the new values
           try {
             const updateResponse = await fetch('/api/update-order', {
@@ -162,7 +177,8 @@ export default function AccountPage() {
             smdpStatus: profileData.smdpStatus || order.smdpStatus,
             qrCode: profileData.qrCode || order.qrCode,
             iccid: profileData.iccid || order.iccid,
-            error: profileData.error
+            error: profileData.error,
+            packageDetails: packageDetails
           };
         } catch (error) {
           console.error(`[Account Page] Error processing order ${order.orderNo}:`, error);

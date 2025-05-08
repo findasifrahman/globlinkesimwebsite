@@ -227,7 +227,7 @@ export default function EsimCard({ order, onTopUp }: EsimCardProps) {
         <CardContent sx={{ flexGrow: 1, p: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6" component="div">
-              {order.packageCode || 'Unknown Package'}
+              {packageDetails?.packageName || order.packageCode || 'Unknown Package'}
             </Typography>
             <Chip
               label={order.status}
@@ -245,6 +245,9 @@ export default function EsimCard({ order, onTopUp }: EsimCardProps) {
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
               Order No: {order.orderNo}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Created: {formatDate(order.createdAt)}
             </Typography>
             {order.iccid && (
               <Typography variant="body2" color="text.secondary">
