@@ -72,7 +72,7 @@ export async function POST(
     const esimOrder = await createesimorder(
       order.packageCode,
       1,
-      order.finalAmountPaid ?? 0,//order.package.price ?? 0,
+      order.order.package.price ?? 0,
       order.transactionId,
       order.paymentOrderNo ?? order.orderNo
     );

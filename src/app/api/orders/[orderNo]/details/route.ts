@@ -37,15 +37,15 @@ export async function GET(
       return new NextResponse('Order not found', { status: 404 });
     }
 
-    // Format the response
+    // Format the response and convert BigInt values to strings
     const formattedOrder = {
       ...order,
       qrCode: order.qrCode || null,
       status: order.status,
       esimStatus: order.esimStatus,
       smdpStatus: order.smdpStatus,
-      dataRemaining: order.dataRemaining,
-      dataUsed: order.dataUsed,
+      dataRemaining: order.dataRemaining?.toString() || null,
+      dataUsed: order.dataUsed?.toString() || null,
       expiryDate: order.expiryDate,
       daysRemaining: order.daysRemaining,
       iccid: order.iccid,
