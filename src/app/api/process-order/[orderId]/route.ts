@@ -162,6 +162,26 @@ export async function GET(
           }, { status: 500 });
         }
 
+        /// send email to user
+        // Get user email before sending
+        const user = await prisma.user.findUnique({
+          where: { id: order.userId },
+          select: { email: true }
+        });
+
+        if (!user?.email) {
+          throw new Error('User email not found');
+        }
+
+        // Send eSIM email
+        await sendEsimEmail(user.email, order.paymentOrderNo ?? order.orderNo, {
+          ...esimProfile,
+          packageCode: order.packageCode,
+          amount: order.finalAmountPaid ?? 0,
+          currency: order.currency ?? 'USD',
+          discountCode: order.discountCode ?? undefined,
+        });
+
         // Update order with eSIM details
         await prisma.esimOrderAfterPayment.updateMany({
           where: { 
@@ -197,24 +217,7 @@ export async function GET(
           throw new Error('Failed to fetch updated order');
         }
 
-        // Get user email before sending
-        const user = await prisma.user.findUnique({
-          where: { id: order.userId },
-          select: { email: true }
-        });
 
-        if (!user?.email) {
-          throw new Error('User email not found');
-        }
-
-        // Send eSIM email
-        await sendEsimEmail(user.email, order.paymentOrderNo ?? order.orderNo, {
-          ...esimProfile,
-          packageCode: order.packageCode,
-          amount: order.finalAmountPaid ?? 0,
-          currency: order.currency ?? 'USD',
-          discountCode: order.discountCode ?? undefined,
-        });
 
         return NextResponse.json({ 
           status: 'GOT_RESOURCE',
