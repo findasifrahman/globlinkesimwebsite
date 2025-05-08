@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         dataRemaining: dataRemaining !== undefined ? dataRemaining : undefined,
         dataUsed: dataUsed !== undefined ? dataUsed : undefined,
         smdpStatus: smdpStatus !== undefined ? smdpStatus : undefined,
-        daysRemaining: daysRemaining !== undefined ? daysRemaining : undefined,
+        daysRemaining: daysRemaining !== undefined ? parseInt(daysRemaining) : undefined,
         qrCode: qrCode !== undefined ? qrCode : undefined,
       },
     });
