@@ -100,8 +100,7 @@ export default function AccountPage() {
           console.log(`[Account Page] Profile data for ${order.orderNo}:`, profileData);
 
           // If the order doesn't exist in Redtea Mobile, filter it out
-          if (profileData.error === 'No profile data available' || 
-              profileData.error === 'the batchOrderNo doesn`t exist') {
+          if (!profileData || profileData.error === 'the batchOrderNo doesn`t exist') {
             console.log(`[Account Page] Order ${order.orderNo} not found in Redtea Mobile, filtering out`);
             return null;
           }
