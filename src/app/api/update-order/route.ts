@@ -34,7 +34,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, data: updatedOrder });
+    // Convert BigInt values to strings for JSON serialization
+    const serializedOrder = {
+      ...updatedOrder,
+      dataRemaining: updatedOrder.dataRemaining?.toString(),
+      dataUsed: updatedOrder.dataUsed?.toString(),
+      daysRemaining: updatedOrder.daysRemaining?.toString(),
+    };
+
+    return NextResponse.json({ success: true, data: serializedOrder });
   } catch (error) {
     console.error('Error updating order:', error);
     
