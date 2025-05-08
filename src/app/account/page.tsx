@@ -119,7 +119,7 @@ export default function AccountPage() {
                 dataUsed: profileData.dataUsed?.toString() || order.dataUsed?.toString() || null,
                 smdpStatus: profileData.smdpStatus || order.smdpStatus,
                 qrCode: profileData.qrCode || order.qrCode,
-                daysRemaining: profileData.daysRemaining?.toString() || order.daysRemaining?.toString() || null,
+                daysRemaining: profileData.daysRemaining ? parseInt(profileData.daysRemaining) : order.daysRemaining ? parseInt(order.daysRemaining) : null,
                 iccid: profileData.iccid || order.iccid,
                 expiryDate: profileData.expiryDate || order.expiryDate,
                 packageCode: profileData.packageCode || order.packageCode,
