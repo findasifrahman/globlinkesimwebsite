@@ -1,17 +1,13 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { generateHmacSignature } from '@/lib/utils';
 
 const REDTEA_API_URL = 'https://api.esimaccess.com/api/v1/open/package/list';
-const REDTEA_ACCESS_CODE = process.env.ESIM_ACCESS_CODE;
-const REDTEA_SECRET_KEY = process.env.ESIM_SECRET_KEY;
+const REDTEA_ACCESS_CODE = process.env.ESIM_ACCESS_CODE || 'e3ea14e1fe6547a29d3133fd220150b7';
+const REDTEA_SECRET_KEY = process.env.ESIM_SECRET_KEY || '651c41ac694a4638902461297b67b156';
 
 // Function to generate HMAC signature
-function generateHmacSignature(timestamp: string, requestId: string, accessCode: string, requestBody: string, secretKey: string): string {
-    const dataToSign = timestamp + requestId + accessCode + requestBody;
-    const hmac = crypto.createHmac('sha256', secretKey);
-    hmac.update(dataToSign);
-    return hmac.digest('hex').toLowerCase();
-}
+
 
 export async function POST(request: Request) {
     try {
@@ -46,22 +42,23 @@ export async function POST(request: Request) {
         });
 
         // Generate signature
-        const signature = generateHmacSignature(
-            timestamp,
-            requestId,
-            REDTEA_ACCESS_CODE,
-            requestBody,
-            REDTEA_SECRET_KEY
-        );
+
+                
+            // Create data string for HMAC signature
+            const dataString = `${REDTEA_ACCESS_CODE}${timestamp}`;
+            
+            // Generate HMAC signature
+            const signature = generateHmacSignature(dataString, REDTEA_SECRET_KEY);
+
 
         // Make request to Redtea Mobile API
         const response = await fetch(REDTEA_API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Timestamp': timestamp,
+                'RT-Timestamp': timestamp,
                 'RT-AccessCode': REDTEA_ACCESS_CODE,
-                'X-Signature': signature
+                'RT-Signature': signature
             },
             body: requestBody
         });

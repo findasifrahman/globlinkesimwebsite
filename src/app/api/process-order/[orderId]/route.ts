@@ -352,9 +352,9 @@ export async function createesimorder(packageCode: string, count: number, price:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Timestamp': timestamp,
+          'RT-Timestamp': timestamp,
           'RT-AccessCode': REDTEA_ACCESS_CODE,
-          'X-Signature': retrySignature
+          'RT-Signature': retrySignature
         },
         body: retryRequestBody
       });
