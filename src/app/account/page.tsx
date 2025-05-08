@@ -115,11 +115,15 @@ export default function AccountPage() {
               body: JSON.stringify({
                 orderNo: order.orderNo,
                 status: profileData.status || order.status || 'UNKNOWN',
-                dataRemaining: profileData.dataRemaining ?? order.dataRemaining,
-                dataUsed: profileData.dataUsed ?? order.dataUsed,
+                dataRemaining: profileData.dataRemaining?.toString() || order.dataRemaining?.toString() || null,
+                dataUsed: profileData.dataUsed?.toString() || order.dataUsed?.toString() || null,
                 smdpStatus: profileData.smdpStatus || order.smdpStatus,
                 qrCode: profileData.qrCode || order.qrCode,
-                daysRemaining: profileData.daysRemaining ?? order.daysRemaining
+                daysRemaining: profileData.daysRemaining?.toString() || order.daysRemaining?.toString() || null,
+                iccid: profileData.iccid || order.iccid,
+                expiryDate: profileData.expiryDate || order.expiryDate,
+                packageCode: profileData.packageCode || order.packageCode,
+                esimStatus: profileData.esimStatus || order.esimStatus
               }),
             });
 
@@ -133,8 +137,8 @@ export default function AccountPage() {
           return {
             ...order,
             status: profileData.status || order.status || 'UNKNOWN',
-            dataRemaining: profileData.dataRemaining ?? order.dataRemaining,
-            dataUsed: profileData.dataUsed ?? order.dataUsed,
+            dataRemaining: profileData.dataRemaining?.toString() || order.dataRemaining?.toString() || null,
+            dataUsed: profileData.dataUsed?.toString() || order.dataUsed?.toString() || null,
             expiryDate: profileData.expiryDate || order.expiryDate,
             package_code: order.package_code || profileData.packageCode || 'unknown',
             packageCode: order.package_code || profileData.packageCode || 'unknown',
