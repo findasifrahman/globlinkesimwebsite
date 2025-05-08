@@ -305,8 +305,9 @@ export async function createesimorder(packageCode: string, count: number, price:
     if (!result.success && result.errorCode === '200005') {
       console.log("Package price expired, fetching updated price...");
       
-      // Fetch updated package details
-      const updatedPackageResponse = await fetch('/api/getEsimPackageByCode', {
+      // Fetch updated package details using absolute URL
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const updatedPackageResponse = await fetch(`${baseUrl}/api/getEsimPackageByCode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
