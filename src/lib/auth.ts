@@ -212,8 +212,13 @@ export const authOptions: NextAuthOptions = {
         token.emailVerified = user.emailVerified;
       }
       return token;
-    }
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl
+    },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development', // Enable debug logs in development
+  debug: process.env.NODE_ENV === 'development',
 }; 
