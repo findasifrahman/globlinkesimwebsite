@@ -269,7 +269,7 @@ export default function OrderDetails() {
         </Typography>
         
         {/* Processing Status Alert */}
-        {(order?.status === 'PENDING' || order?.status === 'PROCESSING') && (
+        {(order?.status === 'PENDING' || order?.status === 'PROCESSING') && !order.qrCode && (
           <Alert severity="info" sx={{ mb: 3 }}>
             <Typography variant="subtitle1" gutterBottom>
               Your eSIM is being processed
@@ -289,6 +289,18 @@ export default function OrderDetails() {
                 Contact Support
               </Button>
             )}
+          </Alert>
+        )}
+
+        {/* Success Alert */}
+        {order?.status === 'GOT_RESOURCE' && order.qrCode && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Your eSIM is ready!
+            </Typography>
+            <Typography variant="body2">
+              We've sent your eSIM details to your email. You can also find your QR code below.
+            </Typography>
           </Alert>
         )}
 
