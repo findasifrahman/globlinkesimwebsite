@@ -207,8 +207,8 @@ model esimOrderAfterPayment {
   status        String   // PENDING, PROCESSING, READY_FOR_DOWNLOAD, COMPLETED, FAILED
   esimStatus    String?  // IN_USE, USED_UP, USED_EXPIRED, UNUSED_EXPIRED, CANCEL, REVOKED
   smdpStatus    String?  // ENABLED, DISABLED, RELEASED, DELETED, INSTALLATION
-  dataRemaining Int?     // in bytes
-  dataUsed      Int?     // in bytes
+  dataRemaining BigInt?  // in bytes
+  dataUsed      BigInt?  // in bytes
   expiryDate    DateTime?
   daysRemaining Int?
   qrCode        String?  // Base64 encoded QR code
