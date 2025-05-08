@@ -3,6 +3,28 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { queryEsimProfile } from '@/lib/esim';
+import { esimOrderAfterPayment } from '@prisma/client';
+
+interface EsimProfileResponse {
+  success: boolean;
+  errorCode: string;
+  errorMsg: string | null;
+  obj: {
+    esimList: Array<{
+      esimStatus: string;
+      totalVolume: number;
+      orderUsage: number;
+      smdpStatus: string;
+      qrCodeUrl: string;
+      iccid: string;
+      expiredTime: string;
+      totalDuration: number;
+      packageList: Array<{
+        packageCode: string;
+      }>;
+    }>;
+  };
+}
 
 // Helper function to safely convert large numbers to 32-bit integers
 function safeInt32(value: number | null | undefined): number | null {
@@ -16,7 +38,6 @@ export async function GET(
   request: Request,
   { params }: { params: { orderNo: string } }
 ) {
-  let order = null;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -27,7 +48,7 @@ export async function GET(
     console.log(`[Profile Route] Fetching profile for order: ${orderNo}`);
 
     // Get the order and verify ownership
-    order = await prisma.esimOrderAfterPayment.findFirst({
+    const order = await prisma.esimOrderAfterPayment.findFirst({
       where: {
         orderNo,
         userId: session.user.id,
@@ -40,58 +61,43 @@ export async function GET(
     }
 
     // Query the eSIM profile from Redtea Mobile
-    const esimProfile = await queryEsimProfile(orderNo);
+    const esimProfileResponse = await queryEsimProfile(orderNo);
+    const esimProfile = esimProfileResponse as unknown as EsimProfileResponse;
     console.log(`[Profile Route] Redtea API response for ${orderNo}:`, esimProfile);
     
     // If no profile is found or API returned error, return the existing order data
-    if (!esimProfile) {
+    if (!esimProfile?.success || !esimProfile.obj?.esimList?.[0]) {
       console.log(`[Profile Route] No profile data available for order: ${orderNo}`);
       return NextResponse.json({
         ...order,
         status: order.status || 'UNKNOWN',
-        error: 'No profile data available'
+        error: 'No profile data available',
+        dataRemaining: order.dataRemaining?.toString() || null,
+        dataUsed: order.dataUsed?.toString() || null,
       });
     }
 
-    // Prepare update data with fallback values and safe number conversion
-    const updateData = {
-      qrCode: esimProfile.qrCode || order.qrCode,
-      iccid: esimProfile.iccid || order.iccid,
-      smdpStatus: esimProfile.smdpStatus || order.smdpStatus,
-      esimStatus: esimProfile.esimStatus || order.esimStatus,
-      dataRemaining: safeInt32(esimProfile.dataRemaining) ?? order.dataRemaining,
-      dataUsed: safeInt32(esimProfile.dataUsed) ?? order.dataUsed,
-      expiryDate: esimProfile.expiryDate ? new Date(esimProfile.expiryDate) : order.expiryDate,
-      daysRemaining: safeInt32(esimProfile.daysRemaining) ?? order.daysRemaining,
-      status: esimProfile.esimStatus || order.status || 'UNKNOWN',
-      updatedAt: new Date()
+    const esimData = esimProfile.obj.esimList[0];
+
+    // Format the response and convert large numbers to strings
+    const formattedResponse = {
+      ...order,
+      status: esimData.esimStatus || order.status || 'UNKNOWN',
+      dataRemaining: esimData.totalVolume?.toString() || order.dataRemaining?.toString() || null,
+      dataUsed: esimData.orderUsage?.toString() || order.dataUsed?.toString() || null,
+      smdpStatus: esimData.smdpStatus || order.smdpStatus,
+      qrCode: esimData.qrCodeUrl || order.qrCode,
+      iccid: esimData.iccid || order.iccid,
+      expiryDate: esimData.expiredTime || order.expiryDate,
+      daysRemaining: esimData.totalDuration || order.daysRemaining,
+      packageCode: esimData.packageList?.[0]?.packageCode || order.packageCode,
     };
 
-    // Update the order with the latest eSIM profile information
-    const updatedOrder = await prisma.esimOrderAfterPayment.update({
-      where: { id: order.id },
-      data: updateData
-    });
-
-    console.log(`[Profile Route] Successfully updated order: ${orderNo}`);
-    return NextResponse.json(updatedOrder);
+    return NextResponse.json(formattedResponse);
   } catch (error) {
-    console.error(`[Profile Route] Error processing order ${params.orderNo}:`, error);
-    
-    // If it's a Prisma error about integer overflow, return the order with error
-    if (error instanceof Error && error.message.includes('Unable to fit integer value') && order) {
-      return NextResponse.json({
-        ...order,
-        status: order.status || 'UNKNOWN',
-        error: 'Data values too large for storage'
-      });
-    }
-
+    console.error('Error fetching eSIM profile:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch order profile',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Failed to fetch eSIM profile' },
       { status: 500 }
     );
   }
