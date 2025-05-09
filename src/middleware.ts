@@ -25,12 +25,16 @@ export default async function middleware(request: NextRequestWithAuth) {
   const path = request.nextUrl.pathname;
 
   const host = request.headers.get('host') || '';
+  const protocol = request.nextUrl.protocol;
 
   // Redirect non-www to www for globlinksolution.com
   if (host === 'globlinksolution.com') {
-    const url = request.nextUrl.clone();
-    url.hostname = 'www.globlinksolution.com';
-    return NextResponse.redirect(url);
+    // Create new URL with www and preserve the path
+    const newUrl = new URL(request.url);
+    newUrl.host = 'www.globlinksolution.com';
+    // Remove port if present
+    newUrl.port = '';
+    return NextResponse.redirect(newUrl);
   }
   // Handle admin routes
   if (path.startsWith('/admin')) {
