@@ -109,7 +109,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          prompt: "consent",
+          prompt: 'select_account', // ensures account chooser shows,
           access_type: "offline",
           response_type: "code",
           state: crypto.randomBytes(32).toString('hex')
