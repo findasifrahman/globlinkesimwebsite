@@ -111,8 +111,7 @@ export const authOptions: NextAuthOptions = {
         params: {
           prompt: 'select_account', // ensures account chooser shows,
           access_type: "offline",
-          response_type: "code",
-          state: crypto.randomBytes(32).toString('hex')
+          response_type: "code"
         }
       },
       profile(profile) {
@@ -214,10 +213,9 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async redirect({ url, baseUrl }) {
-      if (url.includes('/callback/google/callback/google')) {
-        return `${baseUrl}/api/auth/callback/google`;
-      }
+      // Always redirect relative URLs internally
       if (url.startsWith("/")) return `${baseUrl}${url}`;
+      // Only allow URLs from the same domain
       else if (new URL(url).origin === baseUrl) return url;
       return baseUrl;
     },
