@@ -24,6 +24,14 @@ interface Token {
 export default async function middleware(request: NextRequestWithAuth) {
   const path = request.nextUrl.pathname;
 
+  const host = request.headers.get('host') || '';
+
+  // Redirect non-www to www for globlinksolution.com
+  if (host === 'globlinksolution.com') {
+    const url = request.nextUrl.clone();
+    url.hostname = 'www.globlinksolution.com';
+    return NextResponse.redirect(url);
+  }
   // Handle admin routes
   if (path.startsWith('/admin')) {
     // Allow access to the login page
