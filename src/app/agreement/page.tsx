@@ -61,7 +61,7 @@ export default function AgreementPage() {
       <Container maxWidth="lg" sx={{ py: 8 }}>
         <StyledPaper>
           <SectionText>
-            These Terms of Service apply to all prepaid services and related offerings provided by Intricate Lab . (hereinafter "Globlink"), located at Dhaka Bangladesh. Unless otherwise agreed to in writing, Intricate Lab does not accept any terms that differ from these.
+            These Terms of Service apply to all prepaid services and related offerings provided by EasyLink . (hereinafter "Globlink"), located at Guangzhou, China. Unless otherwise agreed to in writing, Easylink does not accept any terms that differ from these.
           </SectionText>
           
           <SectionTitle variant="h5">1. General Validity of the Terms</SectionTitle>
@@ -110,7 +110,7 @@ export default function AgreementPage() {
             – Any action that may impair or interfere with the normal operation of Globlink's network.
           </SectionText>
           <SectionText>
-            If a user violates the above, Intricate Lab reserves the right to suspend or terminate the service without further notice, and during the suspension, the user shall remain responsible for all related fees.
+            If a user violates the above, Easylink reserves the right to suspend or terminate the service without further notice, and during the suspension, the user shall remain responsible for all related fees.
           </SectionText>
           
           <SectionTitle variant="h5">3. Formation, Duration, and Termination of the Contract</SectionTitle>
@@ -339,7 +339,7 @@ export default function AgreementPage() {
           
           <SectionTitle variant="h5">13. Contact Us</SectionTitle>
           <SectionText>
-            If you have any questions about these Terms of Service or our services, please feel free to reach out by email at globlinksolution@gmail.com or by mail Intricate Lab, Dhaka, Bangladesh (8801715480878).
+            If you have any questions about these Terms of Service or our services, please feel free to reach out by email at globlinksolution@gmail.com or by mail Easylink, Guangzhou, China (8618989410063).
           </SectionText>
         </StyledPaper>
       </Container>

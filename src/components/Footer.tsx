@@ -48,31 +48,31 @@ export default function Footer() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Phone fontSize="small" />
               <Typography variant="body2">
-                +88017130494275, +8801719086713
+                +8618989410063
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <LocationOn fontSize="small" />
               <Typography variant="body2">
-                Plot-1, Road-6, Block-A, Section-10
+              Room 13D, 13th Floor,Rongjian Building
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <LocationOn fontSize="small" />
               <Typography variant="body2">
-                Mirpur, Dhaka-1216, Bangladesh
+              No. 29, Construction Six Road, Yuexiu District, Guangzhou
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Language fontSize="small" />
               <Typography variant="body2">
-                A concern of Intricate Lab
+                A concern of EasyLink
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Language fontSize="small" />
               <Typography variant="body2">
-                (www.intricatlab.com)
+                (@c Easylink)
               </Typography>
             </Box>
           </Box>
@@ -110,32 +110,11 @@ export default function Footer() {
                   globlinksolution@gmail.com
                 </Link>
               </Box>
+
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Email fontSize="small" />
-                <Link 
-                  href="mailto:info.globlink.online" 
-                  color="inherit" 
-                  sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                >
-                  asifrahman@intricatlab.com
-                </Link>
+                <img src="/images/logo.png" alt="Easylink" width="100" height="100" />
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LinkedIn fontSize="small" />
-                <Link 
-                  href="https://www.linkedin.com/company/intricatelab/" 
-                  color="inherit" 
-                  sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                >
-                  https://www.linkedin.com/company/intricatelab/
-                </Link>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Language fontSize="small" />
-                <Typography variant="body2">
-                  English
-                </Typography>
-              </Box>
+
             </Box>
           </Box>
         </Box>
@@ -148,7 +127,7 @@ export default function Footer() {
           }}
         >
           <Typography variant="body2">
-            © {new Date().getFullYear()} Globlink. All rights reserved.
+            © {new Date().getFullYear()} Easylink. All rights reserved.
           </Typography>
         </Box>
       </Container>

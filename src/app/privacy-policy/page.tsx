@@ -156,7 +156,7 @@ export default function PrivacyPolicyPage() {
           
           <SectionTitle variant="h5">3. Disclosure</SectionTitle>
           <SectionText>
-            As a general rule, Globlink will not disclose any of your personally identifiable information except under one of the following circumstances:
+            As a general rule, Easylink will not disclose any of your personally identifiable information except under one of the following circumstances:
           </SectionText>
           <SectionText>
             • we have your permission, including the permission granted by your acceptance of this Privacy Policy;
@@ -210,7 +210,7 @@ export default function PrivacyPolicyPage() {
           
           <Box sx={{ mt: 4, textAlign: 'right' }}>
             <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-              2025 Globlink team
+              2025 Easylink team
             </Typography>
             <Typography variant="body2">
               All rights reserved.

@@ -233,7 +233,7 @@ export default function AboutPage() {
                   <PhoneIcon />
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
-                    <Typography variant="body1">+88017130494275, +8801719086713</Typography>
+                    <Typography variant="body1">+8618989410063</Typography>
                   </Box>
                 </ContactInfoItem>
                 
@@ -241,7 +241,7 @@ export default function AboutPage() {
                   <LocationOnIcon />
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">Address</Typography>
-                    <Typography variant="body1">Plot-1, Road-6, Block-A, Section-10, Dhaka-1216, Bangladesh</Typography>
+                    <Typography variant="body1">Room 13D, 13th Floor, Rongjian Building,No. 29, Construction Six Road, Yuexiu District, Guangzhou</Typography>
                   </Box>
                 </ContactInfoItem>
               </StyledPaper>
