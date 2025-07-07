@@ -34,7 +34,6 @@ const getCountryName = (code: string): string => {
     'IN': 'India',
     'BR': 'Brazil',
     'MX': 'Mexico',
-    'RU': 'Russia',
     'ZA': 'South Africa',
     'AE': 'United Arab Emirates',
     'SG': 'Singapore',
